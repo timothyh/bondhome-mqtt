@@ -1,0 +1,51 @@
+{
+  "bpup_port": 30008,
+  "bridges": {
+    "BDAABCD": {
+      "local_token": "123456789abcdef0"
+    }
+  },
+  "config_cache": "/opt/bondhome-mqtt/cache/bond-config.json",
+  "devices": {
+    "kitchen fan": {
+      "has_light": false,
+      "repeat": 3
+    },
+    "living area fan": {
+      "repeat": 3
+    },
+    "master bedroom fan": {
+      "power_off_state": {
+        "light": 0,
+        "power": 0
+      },
+      "power_on_state": {
+        "light": 1,
+        "power": 0,
+        "speed": null
+      },
+      "state_topic": "home/hass/switch/masterbedroom_fan/switch"
+    }
+  },
+  "mqtt_conf": {
+    "cafile": "/opt/bondhome-mqtt/mycacert-ca.crt",
+    "host": "mqtt.internal",
+    "password": "not-a-real-password",
+    "ping_topic": "ping/home/bondhome/_ping",
+    "port": 8883,
+    "protocol": "mqtts",
+    "topic": "home/bondhome",
+    "username": "bondhome"
+  },
+  "no_repeat": [
+    "Dim Down",
+    "Dim Up",
+    "Toggle Power",
+    "Increase Speed",
+    "Decrease Speed",
+    "Toggle Direction",
+    "Toggle Light"
+  ],
+  "slug_separator": "_",
+  "verbose": false
+}
