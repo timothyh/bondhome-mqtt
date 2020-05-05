@@ -90,12 +90,6 @@ class BondDevice {
         this.name = data.name
         this.location = data.location
 
-        //if (this.dev_conf) {
-        //    Object.keys(this.dev_conf).sort().forEach(function(name) {
-        //        this.dev_conf[name] = config.devices[dev_conf][name]
-        //    })
-        //}
-
         this.checksum = data._
         this.actions = data.actions.sort()
 

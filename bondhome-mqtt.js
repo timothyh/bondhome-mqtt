@@ -19,6 +19,16 @@ var stateTopics = {}
 
 var separators = ['_', '-', '$', ':', ';', '!', '@', '#', '%', '^', '~']
 
+var actions = {
+    light: [
+        "DecreaseBrightness",
+        "IncreaseBrightness",
+        "ToggleLight",
+        "TurnLightOff",
+        "TurnLightOn"
+    ]
+}
+
 /* default inspection options */
 
 //util.inspect.defaultOptions.maxArrayLength = null
@@ -192,20 +202,19 @@ mqttClient.on('message', function(topic, message) {
     }
 })
 
-bond.events().on('event',function(device, state) {
+bond.events().on('event', function(device, state) {
     var newState = {
         ...state
     }
     var devSlug = device.name.toSlug()
 
-    if (verbose) console.log("device: %s state: %s",devSlug,newState)
+    if (verbose) console.log("device: %s state: %s", devSlug, newState)
 
     if (!(devices[devSlug].power_state || devices[devSlug].changed_power)) return
     devices[devSlug].changed_power = false
 
     var changed = false
 
-    //Object.keys(newState).forEach(function(name) {
     for (const name in newState) {
         if (newState[name] === devices[devSlug].state[name]) continue
         if (debug) console.log("%s/%s = %s", devSlug, name, newState[name])
@@ -213,13 +222,13 @@ bond.events().on('event',function(device, state) {
         devices[devSlug].state[name] = newState[name]
         changed = true
 
-	if (newState[name] === undefined || newState[name] === null) continue
+        if (newState[name] === undefined || newState[name] === null) continue
 
         mqttClient.publish(mqttConf.topic + '/' + devSlug + '/' + name, newState[name].toString())
     }
 
     if (changed && config.event_stream === 'full') {
-	mqttClient.publish(mqttConf.topic + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+        mqttClient.publish(mqttConf.topic + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
     }
 })
 
@@ -243,6 +252,17 @@ if (inactivityTimeout) {
 
 function sendCommand(devSlug, command) {
     var cmdSlug = command.toSlug()
+
+    if (!devices[devSlug].has_light) {
+        var action
+        try {
+            action = devices[devSlug].device.commands[cmdSlug][0]
+        } catch {}
+        if (actions.light.includes(action)) {
+            if (verbose) console.log('device: %s command: %s - no light in device', devSlug, cmdSlug)
+            return
+        }
+    }
 
     var repeat = devices[devSlug].repeat
     var interval = devices[devSlug].repeat_interval
@@ -277,9 +297,9 @@ function readCache() {
             console.log("bridges in cache - ", Object.keys(bridges).sort().join(' '))
             console.log("devices in cache - ", Object.keys(devices).sort().join(' '))
         }
-        Object.keys(devices).forEach(function(devSlug) {
+        for (const devSlug in devices) {
             device_ids[devices[devSlug].device_id] = devSlug
-        })
+        }
     } catch {
         console.warn("Unable to parse cache file - ", config.config_cache)
     }
@@ -303,17 +323,18 @@ function writeCache() {
 // readCache()
 
 if (config.devices) {
-    Object.keys(config.devices).sort().forEach(function(dev) {
+    for (const dev in config.devices) {
         if (debug) console.log('device: %s', dev)
 
         var devSlug = dev.toSlug()
         if (!devices[devSlug]) devices[devSlug] = {}
-
-        Object.keys(config.devices[dev]).sort().forEach(function(name) {
-            devices[devSlug][name] = config.devices[dev][name]
-        })
-
         devices[devSlug]._config = dev
+
+        for (const name in config.devices[dev]) {
+            devices[devSlug][name] = config.devices[dev][name]
+        }
+
+        if (devices[devSlug].has_light === undefined) devices[devSlug].has_light = true
 
         if (devices[devSlug].state_topic) {
             stateTopics[devices[devSlug].state_topic] = devSlug
@@ -321,15 +342,15 @@ if (config.devices) {
             if (verbose) console.log("%s: subscribed to: %s", devSlug, devices[devSlug].state_topic)
         }
         configChanged = true
-    })
+    }
 }
 
 if (config.bridges) {
-    Object.keys(config.bridges).sort().forEach(function(id) {
+    for (const id in config.bridges) {
         var bridge = new bond.BondBridge(id, config.bridges[id].ip_address, config.bridges[id].local_token)
         bridges[id] = bridge
         bridge.removeAllListeners().on('device', newDevice)
-    })
+    }
 }
 
 bond.discover().on('bridge', function(bridge) {
