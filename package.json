@@ -1,0 +1,17 @@
+{
+  "name": "bondhome-mqtt",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bondhome-mqtt.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Timothy Hunt",
+  "license": "ISC",
+  "dependencies": {
+    "mdns-js": "^1.0.3",
+    "mqtt": "^3.0.0",
+    "node-rest-client": "^3.1.0",
+    "util": "^0.12.2"
+  }
+}

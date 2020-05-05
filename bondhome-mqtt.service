@@ -1,0 +1,15 @@
+[Unit]
+Description=Start Bond Bridge to MQTT gateway
+After=network.target mosquitto.service
+
+[Service]
+User=nodejs
+ExecStart=/usr/bin/nodejs ./bondhome-mqtt.js
+ExecReload=/bin/kill $MAINPID
+WorkingDirectory=/opt/bondhome-mqtt
+Type=simple
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,9 @@
+config.json
+cache/
+*.crt
+TODO
+# ###############################
+#
 # Logs
 logs
 *.log
