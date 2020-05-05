@@ -99,7 +99,6 @@ class BondHome {
                 return
             }
 
-            // if (BondHome.verbose) console.log("bridge: %s device: %s got: %s", bridge_id, device.name, util.inspect(resp.b).replace(/\s+/gm, ' '))
             if (BondHome.debug) console.log("bridge: %s device: %s state: %s", bridge_id, device.name, resp.b)
 
             if (!resp.b) return

@@ -274,6 +274,7 @@ function sendCommand(devSlug, command) {
 
 function newDevice(device) {
     var devSlug = device.name.toSlug()
+
     console.log("discovered device: bridge: %s device: %s slug: %s", device.bridge.bridge_id, device.name, devSlug)
 
     if (!devices[devSlug]) devices[devSlug] = {}
@@ -282,6 +283,15 @@ function newDevice(device) {
     devices[devSlug].power_state = true
 
     if (!devices[devSlug].state) devices[devSlug].state = {}
+
+    if (verbose) {
+        console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
+        var cmds = device.commands
+        // Commands are discovered asynchronously so wait before printing list
+        setTimeout(function() {
+            console.log("device: %s commands: %s", devSlug, Object.keys(cmds).sort().join(' '))
+        }, 5000)
+    }
 }
 
 function readCache() {
