@@ -111,7 +111,6 @@ class BondBridge extends EventEmitter {
             this._getDeviceList()
         }
         bh.enableBpup(this.ip_address)
-        //listener.send("\n", 0, 1, bridge_bpup_port, this.ip_address)
     }
 
     _getDeviceList() {

@@ -11,7 +11,7 @@ class BondHome {
     static verbose = true
 
     static bpupBridgePort = 30007
-    static bpupListenPort = 30006
+    static bpupListenPort = undefined
     static _slugSeparator
     static _bpupListener
     static _bridges = {}
@@ -65,7 +65,7 @@ class BondHome {
 
         var listener = dgram.createSocket('udp4')
 
-        listener.bind(BondHome.bpupPort)
+        listener.bind(BondHome.bpupListenPort)
 
         listener.on('error', (err) => {
             console.warn("server error: \n%s", err.stack)
@@ -73,6 +73,11 @@ class BondHome {
         })
 
         listener.on('message', (msg, rinfo) => {
+	    
+	    if (rinfo.port != BondHome.bpupBridgePort) {
+                console.warn("packet from unexpected port: %s:%s", rinfo.address,rinfo.port)
+		return
+	    }
             var resp
             try {
                 resp = JSON.parse(msg)
@@ -90,6 +95,11 @@ class BondHome {
                 new bb.BondBridge(bridge_id, rinfo.address, undefined)
                 return
             }
+
+	    if (rinfo.address !== bridge.ip_address) {
+                console.warn("packet from unexpected source: %s", rinfo.address, rinfo.port)
+		return
+	    }
 
             var dev_id = resp.t.replace(/devices\/(\w\w*)\/state/, '$1')
             var device = bridge.devices[dev_id]
