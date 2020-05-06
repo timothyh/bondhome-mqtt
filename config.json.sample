@@ -1,11 +1,21 @@
+// This is a sample configuration file
+// JSON does not allow comments so all comments should be removed before using
+// Use jq to validate:-
+// $ jq . < config.json
 {
+// Port to listen on for BPUP messages - Do not use 30007
   "bpup_port": 30008,
+// Known bridges - Bridge id and token can be retrieved from Bond Home app under bridge settings
+// ip_address can be provided if known
   "bridges": {
     "BDAABCD": {
+       // "ip_address": "123.234.123.234",
       "local_token": "123456789abcdef0"
     }
   },
+// file to cache discovered information
   "config_cache": "/opt/bondhome-mqtt/cache/bond-config.json",
+// configuration for specific devices - see README file for options
   "devices": {
     "kitchen fan": {
       "has_light": false,
@@ -27,16 +37,18 @@
       "state_topic": "home/hass/switch/masterbedroom_fan/switch"
     }
   },
+// MQTT broker connection information
   "mqtt_conf": {
     "cafile": "/opt/bondhome-mqtt/mycacert-ca.crt",
     "host": "mqtt.internal",
     "password": "not-a-real-password",
-    "ping_topic": "ping/home/bondhome/_ping",
+    "ping_topic": "ping/bondhome/_ping",
     "port": 8883,
     "protocol": "mqtts",
-    "topic": "home/bondhome",
+    "topic": "bondhome",
     "username": "bondhome"
   },
+// See README file
   "no_repeat": [
     "Dim Down",
     "Dim Up",
@@ -46,6 +58,7 @@
     "Toggle Direction",
     "Toggle Light"
   ],
+// Used to create device slugs - Typically '_' or '-'
   "slug_separator": "_",
   "verbose": false
 }
