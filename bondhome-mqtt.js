@@ -7,7 +7,9 @@ const mqtt = require('mqtt')
 const mh = require('./my-helpers')
 const bond = require('./bondhome')
 
-var config = require('./config.json')
+var args = process.argv.slice(2);
+
+var config = mh.readConfig(args[0] ? args[0] : 'config.json')
 
 var bridges = {}
 

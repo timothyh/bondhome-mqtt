@@ -1,5 +1,7 @@
 'use strict'
 
+const fs = require('fs')
+
 module.exports.isTrue = function(value) {
 
     if (typeof(value) === 'boolean') return value
@@ -30,7 +32,7 @@ module.exports.isTrue = function(value) {
 
 module.exports.isFalse = function(value) {
     var res = exports.isTrue(value)
-    return ( exports.isTrue(value) === undefined ) ? undefined : (!res)
+    return (exports.isTrue(value) === undefined) ? undefined : (!res)
 }
 
 var _slugSeparator
@@ -39,7 +41,32 @@ module.exports.setSeparator = function(sep) {
     _slugSeparator = sep
 }
 
-String.prototype.toSlug = function() {
-        // Ignore any string between ()
-        return _slugSeparator ? this.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, _slugSeparator) : this.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
+module.exports.readConfig = function(file) {
+    var config
+
+    if (!file.match(/\//)) file = './' + file
+
+    var data
+    try {
+        data = fs.readFileSync(file, {
+            encoding: 'utf8',
+            flag: 'r'
+        })
+    } catch (err) {
+        throw (err)
     }
+    if (!data) return undefined
+
+    try {
+        config = JSON.parse(data)
+    } catch {
+        throw ('Unable to parse JSON: ' + file)
+    }
+
+    return config
+}
+
+String.prototype.toSlug = function() {
+    // Ignore any string between ()
+    return _slugSeparator ? this.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, _slugSeparator) : this.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
+}
