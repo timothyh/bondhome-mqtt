@@ -71,13 +71,16 @@ class BondBridge extends EventEmitter {
 
         if (data.locked) {
             if (bh.verbose) console.log("bridge: %s - locked - no token retrieved", this.bridge_id)
-        } else {
-            if (this.token) {
-                if (this.token !== data.token) console.warn("bridge %s: Warning token has changed", this.bridge_id)
-            }
+        } else if (this.token) {
+            if (this.token !== data.token) console.warn("bridge %s: Warning token has changed", this.bridge_id)
+
             this.token = data.token
             console.log("bridge %s: token updated", args.bridge_id)
         }
+	else {
+	    data = data.toString().replace(/^.*<body>(.*)<\/body>.*$/is,'$1').replace(/\s+/gs,' ')
+            console.warn("bridge %s: unrecognized reply: %s", this.bridge_id, data)
+	}
 
         if (this.token) {
             this._getBridge()
@@ -200,7 +203,7 @@ class BondBridge extends EventEmitter {
         }
 
         req.on('error', function(err) {
-            console.warn('bridge: %s path: %s error: %s', this.bridge_id, args.path, err)
+            console.warn('bridge: %s path: %s error: %s', this.bridge_id, args.path, err.message)
         })
     }
 }
