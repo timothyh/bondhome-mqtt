@@ -176,18 +176,35 @@ mqttClient.on('message', function(topic, message) {
                 sendCommand(devSlug, 'Fan ' + (mh.isTrue(message) ? 'On' : 'Off'))
                 break
             case 'speed':
-                if (device.max_speed) {
+                var max_speed = Math.floor(devices[devSlug].max_speed)
+                max_speed = (max_speed >= 1 && max_speed < device.max_speed) ? max_speed : device.max_speed
+                if (max_speed) {
                     var speed = -1
-                    try {
-                        speed = parseInt(message)
-                    } catch {}
+                    switch (message.toLowerCase()) {
+                        case 'high':
+                            speed = max_speed
+                            break
+                        case 'medium':
+                            speed = Math.floor(0.5 + ((max_speed * 2.0) / 3.0))
+                            break
+                        case 'low':
+                            speed = Math.floor(0.5 + ((max_speed * 1.0) / 3.0))
+                            break
+                        case 'off':
+                            speed = 0
+                            break
+                        default:
+                            try {
+                                speed = parseInt(message)
+                            } catch {}
+                    }
                     if (verbose) console.log('device: %s command: Speed %s', devSlug, speed)
                     if (speed == 0) {
                         sendCommand(devSlug, 'Fan Off')
-                    } else if (speed > 0 && speed <= device.max_speed) {
+                    } else if (speed > 0 && speed <= max_speed) {
                         sendCommand(devSlug, 'Speed ' + speed)
                     } else {
-                        console.warn('Invalid speed: device: %s command: Speed %s', devSlug, message)
+                        console.warn('device: %s command: Speed %s - invalid speed', devSlug, speed)
                     }
                 }
                 break
@@ -197,7 +214,7 @@ mqttClient.on('message', function(topic, message) {
                     if (verbose) console.log('device: %s action: %s argument: %s', devSlug, action, message)
                     device.sendAction(action, message, 1)
                 } else {
-                    console.warn('Unexpected action: device: %s action: %s argument: %s', devSlug, action, message)
+                    console.warn('device: %s action: %s argument: %s - unexpected action', devSlug, action, message)
                 }
                 break
         }
@@ -266,6 +283,11 @@ function sendCommand(devSlug, command) {
         }
     }
 
+    var max_speed = Math.floor(devices[devSlug].max_speed)
+    if (max_speed >= 1 && cmdSlug > ('Speed ' + max_speed).toSlug()) {
+        if (verbose) console.log('device: %s command: %s - invalid speed', devSlug, cmdSlug)
+        return
+    }
     var repeat = devices[devSlug].repeat
     var interval = devices[devSlug].repeat_interval
 
