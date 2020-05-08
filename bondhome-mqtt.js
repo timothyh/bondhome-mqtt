@@ -365,11 +365,13 @@ if (config.bridges) {
     }
 }
 
-bond.discover().on('bridge', function(bridge) {
-    console.log('discovered bridge: %s', bridge.bridge_id)
-    bridges[bridge.bridge_id] = bridge
-    bridge.removeAllListeners().on('device', newDevice)
-})
+if (mh.isTrue(config.auto_discover) !== false) {
+    bond.discover().on('bridge', function(bridge) {
+        console.log('discovered bridge: %s', bridge.bridge_id)
+        bridges[bridge.bridge_id] = bridge
+        bridge.removeAllListeners().on('device', newDevice)
+    })
+}
 
 if (config.no_repeat) {
     config.no_repeat.sort().forEach(function(cmd) {
