@@ -15,9 +15,9 @@ class BondBridge extends EventEmitter {
     constructor(id, ip = undefined, token = undefined) {
         super()
         this.bridge_id = id.toUpperCase()
-	if ( bh._bridges[this.bridge_id] ) {
-	    throw new Error('bridge: ' + id + ' already instantiated - Destroy old instance')
-	}
+        if (bh._bridges[this.bridge_id]) {
+            throw new Error('bridge: ' + id + ' already instantiated - Destroy old instance')
+        }
         bh._bridges[this.bridge_id] = this
 
         if (!bh.BondHome._bpupListener) bh.BondHome.bpupListen()
@@ -40,8 +40,8 @@ class BondBridge extends EventEmitter {
     }
 
     refresh() {
-	this.checksum = undefined
-	this._getToken()
+        this.checksum = undefined
+        this._getToken()
     }
 
     destroy() {
@@ -72,20 +72,19 @@ class BondBridge extends EventEmitter {
         if (data.locked) {
             if (bh.verbose) console.log("bridge: %s - locked - no token retrieved", this.bridge_id)
         } else if (this.token) {
-            if (this.token !== data.token) console.warn("bridge %s: Warning token has changed", this.bridge_id)
+            if (this.token !== data.token) console.warn("bridge: %s - Warning token has changed", this.bridge_id)
 
             this.token = data.token
-            console.log("bridge %s: token updated", args.bridge_id)
+            console.log("bridge: %s - token updated", args.bridge_id)
+        } else {
+            data = data.toString().replace(/^.*<body>(.*)<\/body>.*$/is, '$1').replace(/\s+/gs, ' ')
+            console.warn("bridge: %s - unrecognized reply: %s", this.bridge_id, data)
         }
-	else {
-	    data = data.toString().replace(/^.*<body>(.*)<\/body>.*$/is,'$1').replace(/\s+/gs,' ')
-            console.warn("bridge %s: unrecognized reply: %s", this.bridge_id, data)
-	}
 
         if (this.token) {
             this._getBridge()
         } else {
-            console.warn("bridge %s: Warning no token - unable to continue", this.bridge_id)
+            console.warn("bridge: %s - Warning no token - unable to continue", this.bridge_id)
         }
     }
 
