@@ -10,10 +10,8 @@ const bh = require('./bondhome')
 
 //class BondDevice extends EventEmitter {
 class BondDevice {
-    constructor(bridge, dev_id) {
-        // console.log("New device: bridge: %s, device: %s", bridge.bridge_id, dev_id)
-        // super()
-        this.device_id = dev_id
+    constructor(bridge, devId) {
+        this.device_id = devId
         this.bridge = bridge
         this.state = {}
         this.commands = {}
@@ -24,17 +22,17 @@ class BondDevice {
     destroy() {}
 
     sendCommand(cmd, repeat = 1, interval = undefined) {
-        var cmd_slug = bh.toSlug(cmd)
+        var cmdSlug = bh.toSlug(cmd)
 
         var action
         var arg
         try {
-            action = this.commands[cmd_slug][0]
-            arg = this.commands[cmd_slug][1]
+            action = this.commands[cmdSlug][0]
+            arg = this.commands[cmdSlug][1]
         } catch {}
 
         if (!action) {
-            console.warn("Unexpected command: device: %s command: %s", this.name, cmd_slug)
+            bh._events.emit('warn', this, util.format("Unexpected command: device: %s command: %s", this.name, cmdSlug))
             return
         }
 
@@ -52,7 +50,7 @@ class BondDevice {
             method: 'PUT',
             path: '/v2/devices/' + this.device_id + '/actions/' + action,
             data: data,
-	    interval: interval,
+            interval: interval,
             repeat: repeat,
             callback: this._processResult.bind(this)
         })
@@ -63,7 +61,7 @@ class BondDevice {
         var new_state = {
             ...state
         }
-	delete new_state._
+        delete new_state._
 
         var changed = false
 
@@ -73,7 +71,7 @@ class BondDevice {
             this.state[name] = new_state[name]
             changed = true
         }
-	if (changed) bh._events.emit('event',this,new_state)
+        if (changed) bh._events.emit('event', this, new_state)
     }
 
     _getDevice() {
@@ -98,7 +96,7 @@ class BondDevice {
         if (this.actions.includes('TurnLightOn')) this.setCommand('Light On', 'TurnLightOn', null)
         if (this.actions.includes('TurnLightOff')) this.setCommand('Light Off', 'TurnLightOff', null)
 
-        this.bridge.emit('device',this)
+        this.bridge.emit('device', this)
 
         this._getProps()
     }
@@ -173,7 +171,7 @@ class BondDevice {
     _processUpdateResult(args, data) {
         if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         if (data.length) {
-            console.warn('bridge: %s path: %s error: %s', args.bridge_id, args.path, util.inspect(data).replace(/\s+/gm, ' '))
+            bh._events.emit('warn', this, util.format('bridge: %s path: %s error: %s', args.bridge_id, args.path, util.inspect(data).replace(/\s+/gm, ' ')))
         }
 
         this._setState(args.new_state)
