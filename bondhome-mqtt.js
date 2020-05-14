@@ -39,6 +39,9 @@ var actions = {
 var verbose = mh.isTrue(config.verbose)
 var debug = mh.isTrue(config.debug)
 
+var publish_state = false
+var publish_json = false
+
 bond.BondHome.verbose = verbose
 bond.BondHome.debug = debug
 
@@ -56,6 +59,20 @@ if (config.slug_separator) {
     }
     bond.BondHome.setSeparator(config.slug_separator)
     mh.setSeparator(config.slug_separator)
+}
+
+switch (config.event_stream) {
+	case undefined:
+	case 'state':
+		publish_state = true
+		break
+	case 'json':
+		publish_json = true
+		break
+	case 'full':
+		publish_state = true
+		publish_json = true
+		break
 }
 
 var mqttActivity = Date.now()
@@ -243,12 +260,16 @@ bond.events().on('event', function(device, state) {
 
         if (newState[name] === undefined || newState[name] === null) continue
 
-        mqttClient.publish(mqttConf.topic + '/' + devSlug + '/' + name, newState[name].toString())
+	if (publish_state) mqttClient.publish(mqttConf.topic + '/' + devSlug + '/' + name, newState[name].toString())
     }
 
-    if (changed && config.event_stream === 'full') {
-        mqttClient.publish(mqttConf.topic + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
-    }
+    if (changed && publish_json) mqttClient.publish(mqttConf.topic + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+})
+
+bond.events().on('warn', function(device, msg) {
+    console.warn(msg)
+}).on('error', function(device, msg) {
+    console.error(msg)
 })
 
 if (keepaliveInterval) {
