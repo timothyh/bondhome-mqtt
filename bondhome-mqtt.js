@@ -39,8 +39,12 @@ var actions = {
 var verbose = mh.isTrue(config.verbose)
 var debug = mh.isTrue(config.debug)
 
-var publish_state = false
-var publish_json = false
+var publishState = false
+var publishJson = false
+
+var hassEnabled = false
+var hassStatusTopic
+var hassMqttOptions = {}
 
 bond.BondHome.verbose = verbose
 bond.BondHome.debug = debug
@@ -62,18 +66,22 @@ if (config.slug_separator) {
 }
 
 switch (config.event_stream) {
-	case undefined:
-	case 'state':
-		publish_state = true
-		break
-	case 'json':
-		publish_json = true
-		break
-	case 'full':
-		publish_state = true
-		publish_json = true
-		break
+    case undefined:
+    case 'state':
+        publishState = true
+        break
+    case 'json':
+        publishJson = true
+        break
+    case 'full':
+        publishState = true
+        publishJson = true
+        break
 }
+
+if (config.homeassistant) hassEnabled = mh.isTrue(config.homeassistant.discovery_enable)
+if (hassEnabled) hassMqttOptions.retain = mh.isTrue(config.homeassistant.retain)
+if (hassEnabled && config.homeassistant.status_topic) hassStatusTopic = config.homeassistant.status_topic
 
 var mqttActivity = Date.now()
 
@@ -92,17 +100,18 @@ var mqttClient = mqtt.connect({
     protocol: mqttConf.protocol,
     keepalive: mqttConf.keepalive,
     will: {
-        topic: mqttConf.topic + '/' + 'system/state',
+        topic: mqttConf.topic_prefix + '/' + 'system/state',
         payload: 'stop'
     }
 })
 
 mqttClient.on('connect', function() {
     console.log("connected to MQTT broker: %s:%s", mqttConf.host, mqttConf.port)
-    mqttClient.subscribe(mqttConf.topic + '/+/set/#')
-    mqttClient.subscribe(mqttConf.topic + '/+/list/#')
-    mqttClient.subscribe(mqttConf.topic + '/list/devices')
+    mqttClient.subscribe(mqttConf.topic_prefix + '/+/set/#')
+    mqttClient.subscribe(mqttConf.topic_prefix + '/+/list/#')
+    mqttClient.subscribe(mqttConf.topic_prefix + '/list/devices')
     mqttClient.subscribe(mqttConf.ping_topic)
+    if (hassStatusTopic) mqttClient.subscribe(hassStatusTopic)
 })
 
 mqttClient.on('message', function(topic, message) {
@@ -111,6 +120,12 @@ mqttClient.on('message', function(topic, message) {
     if (topic === mqttConf.ping_topic) return
 
     message = message.toString()
+
+    if (topic === hassStatusTopic) {
+        if (message === config.homeassistant.startup_payload) setTimeout(hassPublishAll, 30000)
+        return
+    }
+
     var devSlug = stateTopics[topic]
 
     if (devSlug) {
@@ -138,8 +153,8 @@ mqttClient.on('message', function(topic, message) {
                 }
             }
         }
-        devices[devSlug].power_state = powerState
-        devices[devSlug].changed_power = true
+        devices[devSlug].powerState = powerState
+        devices[devSlug].changedPower = true
 
         return
     }
@@ -147,10 +162,10 @@ mqttClient.on('message', function(topic, message) {
     // home/bondhome/device_slug/set/what/extra
     // home/bondhome/device_slug/list/what/extra
     //                    0       1   2    3
-    var tmp = topic.replace(mqttConf.topic + '/', '').toLowerCase().split('/')
+    var tmp = topic.replace(mqttConf.topic_prefix + '/', '').toLowerCase().split('/')
 
     if (tmp[0] === 'list' && tmp[1] === 'devices') {
-        mqttClient.publish(mqttConf.topic + '/devices', JSON.stringify(Object.keys(devices).sort()))
+        mqttClient.publish(mqttConf.topic_prefix + '/devices', JSON.stringify(Object.keys(devices).sort()))
         return
     }
 
@@ -165,17 +180,17 @@ mqttClient.on('message', function(topic, message) {
         switch (tmp[2]) {
             case 'commands':
                 try {
-                    mqttClient.publish(mqttConf.topic + '/' + devSlug + '/commands', JSON.stringify(Object.keys(device.commands).sort()))
+                    mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/commands', JSON.stringify(Object.keys(device.commands).sort()))
                 } catch {}
                 break
             case 'actions':
                 try {
-                    mqttClient.publish(mqttConf.topic + '/' + devSlug + '/actions', JSON.stringify(device.actions))
+                    mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/actions', JSON.stringify(device.actions))
                 } catch {}
                 break
         }
     } else if (tmp[1] === 'set') {
-        if (!devices[devSlug].power_state) {
+        if (!devices[devSlug].powerState) {
             if (verbose) console.log("Device powered off: %s", devSlug)
             return
         }
@@ -193,19 +208,17 @@ mqttClient.on('message', function(topic, message) {
                 sendCommand(devSlug, 'Fan ' + (mh.isTrue(message) ? 'On' : 'Off'))
                 break
             case 'speed':
-                var max_speed = Math.floor(devices[devSlug].max_speed)
-                max_speed = (max_speed >= 1 && max_speed < device.max_speed) ? max_speed : device.max_speed
-                if (max_speed) {
+                if (devices[devSlug].max_speed >= 1) {
                     var speed = -1
                     switch (message.toLowerCase()) {
                         case 'high':
-                            speed = max_speed
+                            speed = devices[devSlug].highSpeed
                             break
                         case 'medium':
-                            speed = Math.floor(0.5 + ((max_speed * 2.0) / 3.0))
+                            speed = devices[devSlug].mediumSpeed
                             break
                         case 'low':
-                            speed = Math.floor(0.5 + ((max_speed * 1.0) / 3.0))
+                            speed = devices[devSlug].lowSpeed
                             break
                         case 'off':
                             speed = 0
@@ -218,7 +231,7 @@ mqttClient.on('message', function(topic, message) {
                     if (verbose) console.log('device: %s command: Speed %s', devSlug, speed)
                     if (speed == 0) {
                         sendCommand(devSlug, 'Fan Off')
-                    } else if (speed > 0 && speed <= max_speed) {
+                    } else if (speed > 0 && speed <= devices[devSlug].max_speed) {
                         sendCommand(devSlug, 'Speed ' + speed)
                     } else {
                         console.warn('device: %s command: Speed %s - invalid speed', devSlug, speed)
@@ -246,8 +259,8 @@ bond.events().on('event', function(device, state) {
 
     if (verbose) console.log("device: %s state: %s", devSlug, newState)
 
-    if (!(devices[devSlug].power_state || devices[devSlug].changed_power)) return
-    devices[devSlug].changed_power = false
+    if (!(devices[devSlug].powerState || devices[devSlug].changedPower)) return
+    devices[devSlug].changedPower = false
 
     var changed = false
 
@@ -257,13 +270,18 @@ bond.events().on('event', function(device, state) {
 
         devices[devSlug].state[name] = newState[name]
         changed = true
-
-        if (newState[name] === undefined || newState[name] === null) continue
-
-	if (publish_state) mqttClient.publish(mqttConf.topic + '/' + devSlug + '/' + name, newState[name].toString())
     }
 
-    if (changed && publish_json) mqttClient.publish(mqttConf.topic + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+    if (changed) {
+        if (publishState) {
+            for (const name in newState) {
+                if (newState[name] === undefined || newState[name] === null) continue
+                var msg = newState[name].toString()
+                mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
+            }
+        }
+        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+    }
 })
 
 bond.events().on('warn', function(device, msg) {
@@ -325,17 +343,86 @@ function newDevice(device) {
     if (!devices[devSlug]) devices[devSlug] = {}
 
     devices[devSlug].device = device
-    devices[devSlug].power_state = true
+    devices[devSlug].powerState = true
 
     if (!devices[devSlug].state) devices[devSlug].state = {}
 
-    if (verbose) {
-        console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
-        var cmds = device.commands
-        // Commands are discovered asynchronously so wait before printing list
-        setTimeout(function() {
-            console.log("device: %s commands: %s", devSlug, Object.keys(cmds).sort().join(' '))
-        }, 5000)
+    if (verbose) console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
+
+    var max_speed
+    if (device.max_speed >= 1) {
+        max_speed = Math.floor(devices[devSlug].max_speed)
+        max_speed = (max_speed >= 1 && max_speed < device.max_speed) ? max_speed : device.max_speed
+        devices[devSlug].lowSpeed = Math.floor(0.5 + ((max_speed * 1.0) / 3.0))
+        devices[devSlug].mediumSpeed = Math.floor(0.5 + ((max_speed * 2.0) / 3.0))
+        devices[devSlug].highSpeed = max_speed
+        devices[devSlug].max_speed = max_speed
+    }
+
+    if (hassEnabled) hassPublish(devSlug)
+
+    if (verbose) console.log("device: %s max_speed: %s commands: %s", devSlug, max_speed, Object.keys(device.commands).sort().join(' '))
+}
+
+function hassPublishAll() {
+    console.log("Publishing homeassistant configuration")
+    for (const devSlug in devices) {
+        hassPublish(devSlug)
+    }
+}
+
+function hassPublish(devSlug) {
+    var device = devices[devSlug].device
+    switch (device.type) {
+        case 'CF':
+            var id = 'bond-' + device.bridge.bridge_id.toLowerCase() + '-' + device.device_id.toLowerCase()
+            if (devices[devSlug].has_light) {
+                var name = devices[devSlug].light_name ? devices[devSlug].light_name : device.name + ' Light'
+                var attr = {
+                    'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/light',
+                    'device': {
+                        'identifiers': id + '-lit',
+                        'name': device.name,
+                        'via_device': id + '-fan'
+                    },
+                    'name': name,
+                    'payload_off': '0',
+                    'payload_on': '1',
+                    'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/light',
+                    'unique_id': id + '-lit'
+                }
+                mqttClient.publish(config.homeassistant.topic_prefix + '/light/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
+            }
+            var name = devices[devSlug].fan_name ? devices[devSlug].fan_name : device.name
+            var attr = {
+                'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/fan',
+                'device': {
+                    'identifiers': id + '-fan',
+                    'name': device.name,
+                    'via_device': 'bond-' + device.bridge.bridge_id.toUpperCase()
+                },
+                'name': name,
+                'payload_off': '0',
+                'payload_on': '1',
+                'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/power',
+                'unique_id': id + '-fan'
+            }
+            if (device.max_speed >= 1) {
+                attr.payload_low_speed = devices[devSlug].lowSpeed
+                attr.payload_medium_speed = devices[devSlug].mediumSpeed
+                attr.payload_high_speed = devices[devSlug].highSpeed
+                attr.speeds = ['off', 'low', 'medium', 'high']
+                attr.speed_command_topic = mqttConf.topic_prefix + '/' + devSlug + '/set/speed'
+                attr.speed_state_topic = mqttConf.topic_prefix + '/' + devSlug + '/speed'
+            }
+            mqttClient.publish(config.homeassistant.topic_prefix + '/fan/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
+            break
+        case 'FP':
+            break
+        case 'MS':
+            break
+        case 'GX':
+            break
     }
 }
 
@@ -428,4 +515,4 @@ setInterval(function() {
     configChanged = false
 }, 5000)
 
-mqttClient.publish(mqttConf.topic + '/' + 'system/state', 'start')
+mqttClient.publish(mqttConf.topic_prefix + '/' + 'system/state', 'start')

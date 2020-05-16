@@ -6,7 +6,7 @@
 // Port to listen on for BPUP messages - Do not use 30007
   "bpup_port": 30008,
 // Known bridges - Bridge id and token can be retrieved from Bond Home app under bridge settings
-// ip_address can be provided if known
+// ip_address can be provided if known and static
   "bridges": {
     "BDAABCD": {
        // "ip_address": "123.234.123.234",
@@ -37,10 +37,17 @@
       "state_topic": "home/hass/switch/masterbedroom_fan/switch"
     }
   },
+// Integration with homeassistant
+  "homeassistant": {
+    "discovery_enable": true,
+    "startup_payload": "online",
+    "status_topic": "homeassistant/status",
+    "topic_prefix": "homeassistant"
+  },
 // MQTT broker connection information
   "mqtt_conf": {
     "cafile": "/opt/bondhome-mqtt/mycacert-ca.crt",
-    "host": "mqtt.internal",
+    "host": "mqtt.internal.example.com",
     "password": "not-a-real-password",
     "ping_topic": "ping/bondhome/_ping",
     "port": 8883,
