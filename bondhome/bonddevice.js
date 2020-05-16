@@ -87,14 +87,17 @@ class BondDevice {
 
         this.name = data.name
         this.location = data.location
+        this.type = data.type
 
         this.checksum = data._
         this.actions = data.actions.sort()
 
-        if (this.actions.includes('TurnOn')) this.setCommand('Fan On', 'TurnOn', null)
-        if (this.actions.includes('TurnOff')) this.setCommand('Fan Off', 'TurnOff', null)
-        if (this.actions.includes('TurnLightOn')) this.setCommand('Light On', 'TurnLightOn', null)
-        if (this.actions.includes('TurnLightOff')) this.setCommand('Light Off', 'TurnLightOff', null)
+        if (this.type === 'CF') {
+            if (this.actions.includes('TurnOn')) this.setCommand('Fan On', 'TurnOn', null)
+            if (this.actions.includes('TurnOff')) this.setCommand('Fan Off', 'TurnOff', null)
+            if (this.actions.includes('TurnLightOn')) this.setCommand('Light On', 'TurnLightOn', null)
+            if (this.actions.includes('TurnLightOff')) this.setCommand('Light Off', 'TurnLightOff', null)
+        }
 
         this.bridge.emit('device', this)
 
