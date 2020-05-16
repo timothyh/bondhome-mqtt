@@ -99,8 +99,6 @@ class BondDevice {
             if (this.actions.includes('TurnLightOff')) this.setCommand('Light Off', 'TurnLightOff', null)
         }
 
-        this.bridge.emit('device', this)
-
         this._getProps()
     }
 
@@ -123,17 +121,20 @@ class BondDevice {
             path: '/v2/devices/' + this.device_id + '/properties',
             callback: this._processProps.bind(this)
         })
+    }
+
+    _processProps(args, data) {
+        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (this.type === 'CF') this.max_speed = data.max_speed
+        this._getCommands()
+    }
+
+    _getCommands() {
         this.bridge._queueNext({
             method: 'GET',
             path: '/v2/devices/' + this.device_id + '/commands',
             callback: this._processCommands.bind(this)
         })
-    }
-
-    _processProps(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
-        this.max_speed = data.max_speed
-        this._getState()
     }
 
     _processCommands(args, data) {
@@ -142,6 +143,7 @@ class BondDevice {
             if (cmd_id === '_') continue
             this._getCommandDetails(cmd_id)
         }
+        this._getNoop()
     }
 
     _getCommandDetails(cmd_id) {
@@ -156,6 +158,18 @@ class BondDevice {
     _processCommandDetails(args, data) {
         if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         this.setCommand(data.name, data.action, data.argument)
+    }
+
+    _getNoop() {
+        this.bridge._queueNext({
+            method: 'NOOP',
+            callback: this._processNoop.bind(this)
+        })
+    }
+
+    _processNoop(args) {
+        this.bridge.emit('device', this)
+        this._getState()
     }
 
     // Update device state in bond bridge

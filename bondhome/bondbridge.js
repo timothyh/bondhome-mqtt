@@ -165,6 +165,12 @@ class BondBridge extends EventEmitter {
         var req
         var self = this
         switch (args.method) {
+            // Placeholder - Used to mark place in queue - No interaction with device
+            case 'NOOP':
+                req = new EventEmitter()
+                self._queueTimer = setTimeout(self._sendNext.bind(self), 10)
+                setImmediate(args.callback, args)
+                break
             case 'GET':
                 req = client.get('http://' + this.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
