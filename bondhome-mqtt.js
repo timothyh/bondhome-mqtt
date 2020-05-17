@@ -382,7 +382,7 @@ function hassPublish(devSlug) {
                 'device': {
                     'identifiers': id + '-fan',
                     'manufacturer': 'BondHome',
-                    'model': ((device.template && device.template.length > 2) ? device.template : 'undefined'),
+                    'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
                     'name': device.name,
                     'via_device': 'bond-' + device.bridge.bridge_id.toUpperCase()
                 },
@@ -408,7 +408,7 @@ function hassPublish(devSlug) {
                     'device': {
                         'identifiers': id + '-lit',
                         'manufacturer': 'BondHome',
-                        'model': ((device.template && device.template.length > 2) ? device.template : 'undefined'),
+                        'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
                         'name': device.name + '(Light)',
                         'via_device': id + '-fan'
                     },
