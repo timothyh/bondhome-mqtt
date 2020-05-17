@@ -132,7 +132,7 @@ mqttClient.on('message', function(topic, message) {
 
         if (verbose) console.log("topic: %s device: %s state: %s", topic, devSlug, message)
 
-        device = devices[devSlug].device
+        device = devices[devSlug]._device
 
         if (!device) {
             console.warn("Power state for unknown device: %s", devSlug)
@@ -142,7 +142,7 @@ mqttClient.on('message', function(topic, message) {
         var powerState = mh.isTrue(message)
         if (powerState) {
             if (devices[devSlug].power_on_state === 'restore') {
-                device.updateState(devices[devSlug].state)
+                device.updateState(devices[devSlug]._state)
             } else if (devices[devSlug].power_on_state) {
                 device.updateState(devices[devSlug].power_on_state)
             }
@@ -153,8 +153,8 @@ mqttClient.on('message', function(topic, message) {
                 }
             }
         }
-        devices[devSlug].powerState = powerState
-        devices[devSlug].changedPower = true
+        devices[devSlug]._powerState = powerState
+        devices[devSlug]._changedPower = true
 
         return
     }
@@ -174,7 +174,7 @@ mqttClient.on('message', function(topic, message) {
         console.warn("Unexpected topic: %s message: %s", topic, message)
         return
     }
-    var device = devices[devSlug].device
+    var device = devices[devSlug]._device
 
     if (tmp[1] === 'list') {
         switch (tmp[2]) {
@@ -190,7 +190,7 @@ mqttClient.on('message', function(topic, message) {
                 break
         }
     } else if (tmp[1] === 'set') {
-        if (!devices[devSlug].powerState) {
+        if (!devices[devSlug]._powerState) {
             if (verbose) console.log("Device powered off: %s", devSlug)
             return
         }
@@ -212,13 +212,13 @@ mqttClient.on('message', function(topic, message) {
                     var speed = -1
                     switch (message.toLowerCase()) {
                         case 'high':
-                            speed = devices[devSlug].highSpeed
+                            speed = devices[devSlug]._highSpeed
                             break
                         case 'medium':
-                            speed = devices[devSlug].mediumSpeed
+                            speed = devices[devSlug]._mediumSpeed
                             break
                         case 'low':
-                            speed = devices[devSlug].lowSpeed
+                            speed = devices[devSlug]._lowSpeed
                             break
                         case 'off':
                             speed = 0
@@ -259,16 +259,16 @@ bond.events().on('event', function(device, state) {
 
     if (verbose) console.log("device: %s state: %s", devSlug, newState)
 
-    if (!(devices[devSlug].powerState || devices[devSlug].changedPower)) return
-    devices[devSlug].changedPower = false
+    if (!(devices[devSlug]._powerState || devices[devSlug]._changedPower)) return
+    devices[devSlug]._changedPower = false
 
     var changed = false
 
     for (const name in newState) {
-        if (newState[name] === devices[devSlug].state[name]) continue
+        if (newState[name] === devices[devSlug]._state[name]) continue
         if (debug) console.log("%s/%s = %s", devSlug, name, newState[name])
 
-        devices[devSlug].state[name] = newState[name]
+        devices[devSlug]._state[name] = newState[name]
         changed = true
     }
 
@@ -280,7 +280,7 @@ bond.events().on('event', function(device, state) {
                 mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
             }
         }
-        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug]._state))
     }
 })
 
@@ -314,7 +314,7 @@ function sendCommand(devSlug, command) {
     if (!devices[devSlug].has_light) {
         var action
         try {
-            action = devices[devSlug].device.commands[cmdSlug][0]
+            action = devices[devSlug]._device.commands[cmdSlug][0]
         } catch {}
         if (actions.light.includes(action)) {
             if (verbose) console.log('device: %s command: %s - no light in device', devSlug, cmdSlug)
@@ -332,20 +332,20 @@ function sendCommand(devSlug, command) {
 
     if (repeat > 1 && noRepeat.includes(cmdSlug)) repeat = 1
 
-    devices[devSlug].device.sendCommand(command, repeat, interval)
+    devices[devSlug]._device.sendCommand(command, repeat, interval)
 }
 
 function newDevice(device) {
     var devSlug = device.name.toSlug()
 
-    console.log("discovered device: bridge: %s device: %s slug: %s", device.bridge.bridge_id, device.name, devSlug)
+    console.log("discovered device: bridge: %s device: %s slug: %s type: %s template: %s", device.bridge.bridge_id, device.name, devSlug, device.type, device.template)
 
     if (!devices[devSlug]) devices[devSlug] = {}
 
-    devices[devSlug].device = device
-    devices[devSlug].powerState = true
+    devices[devSlug]._device = device
+    devices[devSlug]._powerState = true
 
-    if (!devices[devSlug].state) devices[devSlug].state = {}
+    if (!devices[devSlug]._state) devices[devSlug]._state = {}
 
     if (verbose) console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
 
@@ -353,9 +353,9 @@ function newDevice(device) {
     if (device.max_speed >= 1) {
         max_speed = Math.floor(devices[devSlug].max_speed)
         max_speed = (max_speed >= 1 && max_speed < device.max_speed) ? max_speed : device.max_speed
-        devices[devSlug].lowSpeed = Math.floor(0.5 + ((max_speed * 1.0) / 3.0))
-        devices[devSlug].mediumSpeed = Math.floor(0.5 + ((max_speed * 2.0) / 3.0))
-        devices[devSlug].highSpeed = max_speed
+        devices[devSlug]._lowSpeed = Math.floor(0.5 + ((max_speed * 1.0) / 3.0))
+        devices[devSlug]._mediumSpeed = Math.floor(0.5 + ((max_speed * 2.0) / 3.0))
+        devices[devSlug]._highSpeed = max_speed
         devices[devSlug].max_speed = max_speed
     }
 
@@ -372,32 +372,17 @@ function hassPublishAll() {
 }
 
 function hassPublish(devSlug) {
-    var device = devices[devSlug].device
+    var device = devices[devSlug]._device
     switch (device.type) {
         case 'CF':
             var id = 'bond-' + device.bridge.bridge_id.toLowerCase() + '-' + device.device_id.toLowerCase()
-            if (devices[devSlug].has_light) {
-                var name = devices[devSlug].light_name ? devices[devSlug].light_name : device.name + ' Light'
-                var attr = {
-                    'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/light',
-                    'device': {
-                        'identifiers': id + '-lit',
-                        'name': device.name,
-                        'via_device': id + '-fan'
-                    },
-                    'name': name,
-                    'payload_off': '0',
-                    'payload_on': '1',
-                    'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/light',
-                    'unique_id': id + '-lit'
-                }
-                mqttClient.publish(config.homeassistant.topic_prefix + '/light/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
-            }
             var name = devices[devSlug].fan_name ? devices[devSlug].fan_name : device.name
             var attr = {
                 'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/fan',
                 'device': {
                     'identifiers': id + '-fan',
+                    'manufacturer': 'BondHome',
+                    'model': ((device.template && device.template.length > 2) ? device.template : 'undefined'),
                     'name': device.name,
                     'via_device': 'bond-' + device.bridge.bridge_id.toUpperCase()
                 },
@@ -408,14 +393,33 @@ function hassPublish(devSlug) {
                 'unique_id': id + '-fan'
             }
             if (device.max_speed >= 1) {
-                attr.payload_low_speed = devices[devSlug].lowSpeed
-                attr.payload_medium_speed = devices[devSlug].mediumSpeed
-                attr.payload_high_speed = devices[devSlug].highSpeed
+                attr.payload_low_speed = devices[devSlug]._lowSpeed
+                attr.payload_medium_speed = devices[devSlug]._mediumSpeed
+                attr.payload_high_speed = devices[devSlug]._highSpeed
                 attr.speeds = ['off', 'low', 'medium', 'high']
                 attr.speed_command_topic = mqttConf.topic_prefix + '/' + devSlug + '/set/speed'
                 attr.speed_state_topic = mqttConf.topic_prefix + '/' + devSlug + '/speed'
             }
             mqttClient.publish(config.homeassistant.topic_prefix + '/fan/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
+            if (devices[devSlug].has_light) {
+                var name = devices[devSlug].light_name ? devices[devSlug].light_name : device.name + ' Light'
+                var attr = {
+                    'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/light',
+                    'device': {
+                        'identifiers': id + '-lit',
+                        'manufacturer': 'BondHome',
+                        'model': ((device.template && device.template.length > 2) ? device.template : 'undefined'),
+                        'name': device.name + '(Light)',
+                        'via_device': id + '-fan'
+                    },
+                    'name': name,
+                    'payload_off': '0',
+                    'payload_on': '1',
+                    'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/light',
+                    'unique_id': id + '-lit'
+                }
+                mqttClient.publish(config.homeassistant.topic_prefix + '/light/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
+            }
             break
         case 'FP':
             break

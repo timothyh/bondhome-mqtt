@@ -88,6 +88,7 @@ class BondDevice {
         this.name = data.name
         this.location = data.location
         this.type = data.type
+        this.template = data.template
 
         this.checksum = data._
         this.actions = data.actions.sort()
