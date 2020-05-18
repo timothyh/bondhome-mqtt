@@ -66,7 +66,8 @@ module.exports.readConfig = function(file) {
     return config
 }
 
-String.prototype.toSlug = function() {
+String.prototype.toSlug = function(sep = undefined) {
+    sep = sep ? sep : _slugSeparator
     // Ignore any string between ()
-    return _slugSeparator ? this.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, _slugSeparator) : this.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
+    return sep ? this.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, sep) : this.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
 }
