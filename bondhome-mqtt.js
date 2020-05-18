@@ -373,60 +373,30 @@ function hassPublishAll() {
 
 function hassPublish(devSlug) {
     var device = devices[devSlug]._device
-    switch (device.type) {
-        case 'CF':
-            var id = 'bond-' + device.bridge.bridge_id.toLowerCase() + '-' + device.device_id.toLowerCase()
-            var name = devices[devSlug].fan_name ? devices[devSlug].fan_name : device.name
-            var attr = {
-                'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/fan',
-                'device': {
-                    'identifiers': id + '-fan',
-                    'manufacturer': 'BondHome',
-                    'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
-                    'name': device.name,
-                    'via_device': 'bond-' + device.bridge.bridge_id.toUpperCase()
-                },
-                'name': name,
-                'payload_off': '0',
-                'payload_on': '1',
-                'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/power',
-                'unique_id': id + '-fan'
-            }
-            if (device.max_speed >= 1) {
-                attr.payload_low_speed = devices[devSlug]._lowSpeed
-                attr.payload_medium_speed = devices[devSlug]._mediumSpeed
-                attr.payload_high_speed = devices[devSlug]._highSpeed
-                attr.speeds = ['off', 'low', 'medium', 'high']
-                attr.speed_command_topic = mqttConf.topic_prefix + '/' + devSlug + '/set/speed'
-                attr.speed_state_topic = mqttConf.topic_prefix + '/' + devSlug + '/speed'
-            }
-            mqttClient.publish(config.homeassistant.topic_prefix + '/fan/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
-            if (devices[devSlug].has_light) {
-                var name = devices[devSlug].light_name ? devices[devSlug].light_name : device.name + ' Light'
-                var attr = {
-                    'command_topic': mqttConf.topic_prefix + '/' + devSlug + '/set/light',
-                    'device': {
-                        'identifiers': id + '-lit',
-                        'manufacturer': 'BondHome',
-                        'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
-                        'name': device.name + '(Light)',
-                        'via_device': id + '-fan'
-                    },
-                    'name': name,
-                    'payload_off': '0',
-                    'payload_on': '1',
-                    'state_topic': mqttConf.topic_prefix + '/' + devSlug + '/light',
-                    'unique_id': id + '-lit'
-                }
-                mqttClient.publish(config.homeassistant.topic_prefix + '/light/' + devSlug + '/config', JSON.stringify(attr), hassMqttOptions)
-            }
-            break
-        case 'FP':
-            break
-        case 'MS':
-            break
-        case 'GX':
-            break
+    var hc
+    if (device.template) {
+        try {
+            var mod = "./homeassistant/model-" + device.template.toLowerCase()
+            hc = require(mod)
+            if (verbose) console.log("%s: loaded module: %s", devSlug, mod)
+        } catch (err) {
+            if (err.code !== 'MODULE_NOT_FOUND') throw (err)
+        }
+    }
+    if (!hc) {
+        try {
+            var mod = "./homeassistant/type-" + device.type.toLowerCase()
+            hc = require(mod)
+            if (verbose) console.log("%s: loaded module: %s", devSlug, mod)
+        } catch (err) {
+            if (err.code !== 'MODULE_NOT_FOUND') throw (err)
+        }
+    }
+    if (hc) {
+        var res = hc.hassConfig(devSlug, mqttConf.topic_prefix, devices[devSlug])
+        for (const topic in res) {
+            mqttClient.publish(config.homeassistant.topic_prefix + '/' + topic + '/config', JSON.stringify(res[topic]), hassMqttOptions)
+        }
     }
 }
 
