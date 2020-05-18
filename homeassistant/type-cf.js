@@ -14,12 +14,19 @@ module.exports.hassConfig = function(devSlug, prefix, config) {
 
     var id = 'bond-' + device.bridge.bridge_id.toLowerCase() + '-' + device.device_id.toLowerCase()
     var name = config.fan_name ? config.fan_name : device.name
+    var manu = config.manufacturer ? config.manufacturer : 'BondHome'
+    var model
+    if ( config.model ) {
+	    model = config.model
+    } else {
+            model = ((device.template && device.template.length > 2) ? device.template : 'N/A')
+    }
     var attr = {
         'command_topic': prefix + '/' + devSlug + '/set/fan',
         'device': {
             'identifiers': id + '-fan',
-            'manufacturer': 'BondHome',
-            'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
+            'manufacturer': manu,
+            'model': model,
             'name': device.name,
             'via_device': 'bond-' + device.bridge.bridge_id.toUpperCase()
         },
@@ -44,8 +51,8 @@ module.exports.hassConfig = function(devSlug, prefix, config) {
             'command_topic': prefix + '/' + devSlug + '/set/light',
             'device': {
                 'identifiers': id + '-lit',
-                'manufacturer': 'BondHome',
-                'model': ((device.template && device.template.length > 2) ? device.template : 'N/A'),
+                'manufacturer': manu,
+                'model': model,
                 'name': device.name + '(Light)',
                 'via_device': id + '-fan'
             },
