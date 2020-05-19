@@ -44,6 +44,7 @@ var publishJson = false
 
 var hassEnabled = false
 var hassStatusTopic
+var hassModules = './homeassistant/'
 var hassMqttOptions = {}
 
 bond.BondHome.verbose = verbose
@@ -79,9 +80,14 @@ switch (config.event_stream) {
         break
 }
 
-if (config.homeassistant) hassEnabled = mh.isTrue(config.homeassistant.discovery_enable)
-if (hassEnabled) hassMqttOptions.retain = mh.isTrue(config.homeassistant.retain)
-if (hassEnabled && config.homeassistant.status_topic) hassStatusTopic = config.homeassistant.status_topic
+if (config.homeassistant) {
+    hassEnabled = mh.isTrue(config.homeassistant.discovery_enable)
+    if (hassEnabled) {
+        hassMqttOptions.retain = mh.isTrue(config.homeassistant.retain)
+        if (config.homeassistant.status_topic) hassStatusTopic = config.homeassistant.status_topic
+        if (config.homeassistant.modules) hassModules = config.homeassistant.modules + '/'
+    }
+}
 
 var mqttActivity = Date.now()
 
@@ -264,6 +270,11 @@ bond.events().on('event', function(device, state) {
 
     var changed = false
 
+    if (device.type === 'CF' && !devices[devSlug].has_light) {
+        delete newState.light
+        delete newState.brightness
+    }
+
     for (const name in newState) {
         if (newState[name] === devices[devSlug]._state[name]) continue
         if (debug) console.log("%s/%s = %s", devSlug, name, newState[name])
@@ -374,23 +385,24 @@ function hassPublishAll() {
 function hassPublish(devSlug) {
     var device = devices[devSlug]._device
     var hc
-    if (device.template) {
-        try {
-            var mod = "./homeassistant/model-" + device.template.toLowerCase()
-            hc = require(mod)
-            if (verbose) console.log("%s: loaded module: %s", devSlug, mod)
-        } catch (err) {
-            if (err.code !== 'MODULE_NOT_FOUND') throw (err)
-        }
+    var mods = []
+    var base
+    if (devices[devSlug].homeassistant_module) {
+        var m = devices[devSlug].homeassistant_module
+        mods.push(m.match(/\//) ? m : hassModules + m)
     }
-    if (!hc) {
+    if (devices[devSlug].model) mods.push(hassModules + 'model-' + devices[devSlug].model.toSlug('-'))
+    if (device.template) mods.push(hassModules + 'template-' + device.template.toSlug('-'))
+    if (device.type) mods.push(hassModules + 'type-' + device.type.toLowerCase())
+    for (const mod of mods) {
         try {
-            var mod = "./homeassistant/type-" + device.type.toLowerCase()
+            if (verbose) console.log("%s: trying to load module: %s", devSlug, mod)
             hc = require(mod)
             if (verbose) console.log("%s: loaded module: %s", devSlug, mod)
         } catch (err) {
             if (err.code !== 'MODULE_NOT_FOUND') throw (err)
         }
+        if (hc) break
     }
     if (hc) {
         var res = hc.hassConfig(devSlug, mqttConf.topic_prefix, devices[devSlug])
