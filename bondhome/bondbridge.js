@@ -67,10 +67,10 @@ class BondBridge extends EventEmitter {
     }
 
     _processToken(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
         if (data.locked) {
-            if (bh.verbose) console.log("bridge: %s - locked - no token retrieved", this.bridge_id)
+            if (bh.BondHome.verbose) console.log("bridge: %s - locked - no token retrieved", this.bridge_id)
         } else if (this.token) {
             if (this.token !== data.token) console.warn("bridge: %s - Warning token has changed", this.bridge_id)
 
@@ -97,13 +97,13 @@ class BondBridge extends EventEmitter {
     }
 
     _processBridge(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
         this.name = data.name
         this.location = data.location
 
         if (this.checksum && this.checksum === data._) {
-            if (bh.verbose) console.log("bridge: %s - configuration not changed", this.bridge_id)
+            if (bh.BondHome.verbose) console.log("bridge: %s - configuration not changed", this.bridge_id)
             for (const dev_id in this.devices) {
                 this.devices[dev_id].state = {}
                 this.devices[dev_id]._getState(dev_id)
@@ -124,7 +124,7 @@ class BondBridge extends EventEmitter {
     }
 
     _processDeviceList(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         for (const dev_id in this.devices) {
             this.devices[dev_id].destroy()
             delete this.devices[dev_id]

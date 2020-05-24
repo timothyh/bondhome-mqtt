@@ -36,7 +36,7 @@ class BondDevice {
             return
         }
 
-        if (bh.debug) console.log("send_action(%s, %s, %s, %s, %s)", this.bridge.bridge_id, this.name, action, arg, repeat)
+        if (bh.BondHome.debug) console.log("send_action(%s, %s, %s, %s, %s)", this.bridge.bridge_id, this.name, action, arg, repeat)
 
         this.sendAction(action, arg, repeat, interval)
     }
@@ -67,7 +67,7 @@ class BondDevice {
 
         for (const name in new_state) {
             if (new_state[name] === this.state[name]) continue
-            if (bh.debug) console.log("%s/%s = %s", this.name, name, new_state[name])
+            if (bh.BondHome.debug) console.log("%s/%s = %s", this.name, name, new_state[name])
             this.state[name] = new_state[name]
             changed = true
         }
@@ -83,7 +83,7 @@ class BondDevice {
     }
 
     _processDevice(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
         this.name = data.name
         this.location = data.location
@@ -112,7 +112,7 @@ class BondDevice {
     }
 
     _processState(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         this._setState(data)
     }
 
@@ -125,7 +125,7 @@ class BondDevice {
     }
 
     _processProps(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         if (this.type === 'CF') this.max_speed = data.max_speed
         this._getCommands()
     }
@@ -139,7 +139,7 @@ class BondDevice {
     }
 
     _processCommands(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         for (const cmd_id in data) {
             if (cmd_id === '_') continue
             this._getCommandDetails(cmd_id)
@@ -157,7 +157,7 @@ class BondDevice {
     }
 
     _processCommandDetails(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         this.setCommand(data.name, data.action, data.argument)
     }
 
@@ -187,7 +187,7 @@ class BondDevice {
     }
 
     _processUpdateResult(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         if (data.length) {
             bh._events.emit('warn', this, util.format('bridge: %s path: %s error: %s', args.bridge_id, args.path, util.inspect(data).replace(/\s+/gm, ' ')))
         }
@@ -198,7 +198,7 @@ class BondDevice {
     /******************************************************************************/
 
     _processResult(args, data) {
-        if (bh.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
     }
 
     setCommand(command, action, arg) {

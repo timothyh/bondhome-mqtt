@@ -8,7 +8,7 @@ const bb = require('./bondbridge')
 
 class BondHome {
     static debug = false
-    static verbose = true
+    static verbose = false
 
     static bpupBridgePort = 30007
     static bpupListenPort = undefined
