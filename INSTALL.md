@@ -9,18 +9,22 @@ https://github.com/nodesource/distributions#installation-instructions
 
 2) Clone this Git repo to target location:-
 
-```$ git clone git@github.com:timothyh/bondhome-mqtt.git /opt/bondhome-mqtt```
+```
+$ git clone git@github.com:timothyh/bondhome-mqtt.git /opt/bondhome-mqtt
+```
 
 3) Install required Node modules
 
-```$ cd /opt/bondhome-mqtt
+```
+$ cd /opt/bondhome-mqtt
 $ npm install
 ```
 
 4) Generate an initial configuration
 - Power cycle the Bond Home devices on your network.
 - Run the discover utility to generate an initial configuration file
-```$ cd /opt/bondhome-mqtt
+```
+$ cd /opt/bondhome-mqtt
 $ node discover.js --config
 discovered bridge: ZZZZ99999
 discovered device: bridge: ZZZZ99999 device: Office Fan
@@ -38,10 +42,13 @@ Sample configuration file follows
 ```
 - Copy the above JSON output into a local configuration file - config.json
 - The syntax can be checked using the `jq` command
-```$ jq . < config.json```
+```
+$ jq . < config.json
+```
 - The default configuration assumes an MQTT broker on localhost with no credentials required. If that's not the case, the MQTT broker settings may have to be adjusted. MQTT broker settings can be seen in `examples/config.json.sample`.
 - Test installation and initial configuration file
-```$ node bondhome-mqtt
+```
+$ node bondhome-mqtt
 discovered bridge: ZZZZ999999
 connected to MQTT broker: localhost:1883
 ......
@@ -49,19 +56,24 @@ Ctrl-C
 ```
 
 4) Install the systemd service
-```$ sudo su -
+
+```
+$ sudo su -
 # useradd -r nodejs
 # cp -p /opt/bondhome-mqtt/bondhome-mqtt.service /etc/systemd/system
 # systemctl daemon-reload
 # systemctl enable bondhome-mqtt
 # systemctl start bondhome-mqtt
 # systemctl status bondhome-mqtt
+# exit
 ```
 
 5) Verify operation.
 
-This assume a default topic prefix of `bondhome`.
+The command below assumes a default topic prefix of `bondhome`.
+
 ```$ mosquitto_sub -v -h localhost -t 'bondhome/#'```
+
 When the Bond Home application is used, there should be status updates of the form
 ```
 bondhome/device_slug/power 1
