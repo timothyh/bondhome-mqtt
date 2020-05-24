@@ -94,6 +94,10 @@ var mqttActivity = Date.now()
 var mqttConf = {
     ...config.mqtt_conf
 }
+if (!mqttConf.topic_prefix) mqttConf.topic_prefix = 'bondhome'
+if (!mqttConf.host) mqttConf.host = 'localhost'
+if (!mqttConf.port) mqttConf.port = 1883
+if (!mqttConf.protocol) mqttConf.protocol = 'mqtt'
 
 if (mqttConf.cafile) mqttConf.cacertificate = [fs.readFileSync(mqttConf.cafile)]
 
