@@ -59,12 +59,15 @@ Ctrl-C
 ```
 
 5) Verify operation.
+
 This assume a default topic prefix of `bondhome`.
 ```$ mosquitto_sub -v -h localhost -t 'bondhome/#'```
 When the Bond Home application is used, there should be status updates of the form
-```bondhome/device_slug/power 1
+```
+bondhome/device_slug/power 1
 bondhome/device_slug/speed 2
-bondhome/device_slug/light 1```
+bondhome/device_slug/light 1
+```
 
 6) Initial troubleshooting
 - Use the `journalctl` command to see output:-
