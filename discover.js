@@ -1,5 +1,21 @@
 #!/usr/bin/node
 
+/*
+ * Utility to discover Bond Home devices on local network
+ *
+ * Usage: node discover.js [options ....] [config_file]
+ *
+ * Options are:
+ *    --list - List discovered devices (default)
+ *    --config - Generate/update bondhome-mqtt configuration file
+ *    --wait=99 - How long to wait before exiting (in seconds) - Default 15
+ *    --verbose - Include commands and actions supported by discovered devices
+ *    --debug
+ *
+ * config_file is optional and defines config file to use - defaults to ./config.json
+ * if provided, config_file must be a properly formatted JSON file
+ * If required, config_file may be used to inject local tokens into the configuration
+ */
 'use strict'
 
 const util = require('util')
@@ -50,9 +66,14 @@ for (const arg of process.argv.slice(2)) {
     }
 }
 
+if (config_file.length) {
 try {
+    if (!config_file.match(/\//)) config_file = './' + config_file
     config = require(config_file)
-} catch {}
+} catch (err) {
+    if (err.code !== 'MODULE_NOT_FOUND') throw (err)
+}
+}
 
 bond.BondHome.bpupListenPort = undefined
 
@@ -89,6 +110,7 @@ bond.discover().on('bridge', function(bridge) {
 
 function exitNow() {
     if (op === 'config') {
+	config.verbose = true
         console.log('Sample configuration file follows')
         console.log('--------------------------------------------------------------')
         console.log(JSON.stringify(config, null, 2))
