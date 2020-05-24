@@ -2,7 +2,7 @@
 
 Gateway between MQTT and Bond Home bridges and devices
 
-# TLDR
+## TLDR
 
 Enables the use of MQTT to control BondHome bridges and devices.
 
@@ -16,28 +16,24 @@ Similarly, MQTT messages with status updates for BondHome bridges and devices. F
   
 Also supports MQTT integration with HomeAssistant
 
-# Installation
+## Installation
 
-1) Install NodeJS and NPM - Instructions for Debian (Ubuntu, Raspbian) type environments can be found at
-https://github.com/nodesource/distributions#installation-instructions
+See INSTALL.md
 
-2) Clone this Git repo to target location:-
+## Configuration
 
-```$ git clone git@github.com:timothyh/bondhome-mqtt.git /opt/bondhome-mqtt```
+See examples/config.json.sample
 
-3) Install required Node modules
+## FAQ
 
-```$ cd /opt/bondhome-mqtt
-$ npm install
-```
+* What's a SLUG
+See https://en.wikipedia.org/wiki/Clean_URL#Slug
 
+* What's the difference between a command and an action
 
-# FAQ
+* Why is this gateway needed - Doesn't BondHome support MQTT directly?
 
-What's the difference between a command and an action
-
-Why is this gateway needed - Doesn't BondHome support MQTT directly
-
-Can I use this gateway to program my BondHome devices
+* Can I use this gateway to program my BondHome devices
+No - Use Bond Home application or Bond Home CLI - https://github.com/bondhome/bond-cli
 
 For BondHome API see See http://docs-local.appbond.com/
