@@ -24,10 +24,28 @@ See INSTALL.md
 
 See examples/config.json.sample
 
+## Usage
+
+
 ## FAQ
 
 * What's a SLUG
+
 See https://en.wikipedia.org/wiki/Clean_URL#Slug
+
+* What's a command?
+
+Typically each button on the associated remote control represents a command. Examples include
+    * Toggle Light
+    * Speed 2
+    * Fan Off
+Use the Bond Home application to see the commands associated with a specific device.
+
+See also http://docs-local.appbond.com/#section/Glossary/Commands
+
+* What's an action?
+
+See http://docs-local.appbond.com/#section/Glossary/Action
 
 * What's the difference between a command and an action
 
