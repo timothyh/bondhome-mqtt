@@ -152,7 +152,7 @@ mqttClient.on('message', function(topic, message) {
         var powerState = mh.isTrue(message)
         if (powerState) {
             if (devices[devSlug].power_on_state === 'restore') {
-                device.updateState(devices[devSlug]._state)
+                device.updateState(devices[devSlug].state)
             } else if (devices[devSlug].power_on_state) {
                 device.updateState(devices[devSlug].power_on_state)
             }
@@ -163,8 +163,9 @@ mqttClient.on('message', function(topic, message) {
                 }
             }
         }
-        devices[devSlug]._powerState = powerState
+        devices[devSlug].power_state = powerState
         devices[devSlug]._changedPower = true
+        configChanged = true
 
         return
     }
@@ -200,7 +201,7 @@ mqttClient.on('message', function(topic, message) {
                 break
         }
     } else if (tmp[1] === 'set') {
-        if (!devices[devSlug]._powerState) {
+        if (!devices[devSlug].power_state) {
             if (verbose) console.log("Device powered off: %s", devSlug)
             return
         }
@@ -269,7 +270,7 @@ bond.events().on('event', function(device, state) {
 
     if (verbose) console.log("device: %s state: %s", devSlug, newState)
 
-    if (!(devices[devSlug]._powerState || devices[devSlug]._changedPower)) return
+    if (!(devices[devSlug].power_state || devices[devSlug]._changedPower)) return
     devices[devSlug]._changedPower = false
 
     var changed = false
@@ -280,10 +281,10 @@ bond.events().on('event', function(device, state) {
     }
 
     for (const name in newState) {
-        if (newState[name] === devices[devSlug]._state[name]) continue
+        if (newState[name] === devices[devSlug].state[name]) continue
         if (debug) console.log("%s/%s = %s", devSlug, name, newState[name])
 
-        devices[devSlug]._state[name] = newState[name]
+        devices[devSlug].state[name] = newState[name]
         changed = true
     }
 
@@ -295,7 +296,8 @@ bond.events().on('event', function(device, state) {
                 mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
             }
         }
-        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug]._state))
+        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
+        configChanged = true
     }
 })
 
@@ -358,9 +360,9 @@ function newDevice(device) {
     if (!devices[devSlug]) devices[devSlug] = {}
 
     devices[devSlug]._device = device
-    devices[devSlug]._powerState = true
+    devices[devSlug].power_state = true
 
-    if (!devices[devSlug]._state) devices[devSlug]._state = {}
+    if (!devices[devSlug].state) devices[devSlug].state = {}
 
     if (verbose) console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
 
@@ -377,6 +379,8 @@ function newDevice(device) {
     if (hassEnabled) hassPublish(devSlug)
 
     if (verbose) console.log("device: %s max_speed: %s commands: %s", devSlug, max_speed, Object.keys(device.commands).sort().join(' '))
+
+    configChanged = true
 }
 
 function hassPublishAll() {
@@ -441,10 +445,28 @@ function readCache() {
 
 function writeCache() {
     if (config.config_cache) {
+        var bridge_tmp = {}
+        for (const id in bridges) {
+            bridge_tmp[id] = {}
+            for (const attr in bridges[id]) {
+                if (attr.match(/^_/)) continue
+                if (debug) console.log('saving bridge %s %s', id, attr)
+                bridge_tmp[id][attr] = bridges[id][attr]
+            }
+        }
+        var device_tmp = {}
+        for (const id in devices) {
+            device_tmp[id] = {}
+            for (const attr in devices[id]) {
+                if (attr.match(/^_/)) continue
+                if (debug) console.log('saving device %s %s', id, attr)
+                device_tmp[id][attr] = devices[id][attr]
+            }
+        }
         var jsondata = "{\n" +
             '"config": ' + JSON.stringify(config, null, 2) + ",\n" +
-            '"bridges": ' + JSON.stringify(bridges, null, 2) + ",\n" +
-            '"devices\": ' + JSON.stringify(devices, null, 2) + "\n" +
+            '"bridges": ' + JSON.stringify(bridge_tmp, null, 2) + ",\n" +
+            '"devices\": ' + JSON.stringify(device_tmp, null, 2) + "\n" +
             "}\n"
         fs.writeFile(config.config_cache, jsondata, (err) => {
             if (err) throw err
@@ -477,21 +499,25 @@ if (config.devices) {
     }
 }
 
+bond.events().on('bridge', function(bridge) {
+    var id = bridge.bridge_id
+    console.log('discovered bridge: %s', id)
+    if (!bridges[id]) bridges[id] = {}
+    bridges[id]._bridge = bridge
+    bridges[id].token = bridge.token
+    bridges[id].ip_address = bridge.ip_address
+    bridge.removeAllListeners().on('device', newDevice)
+    configChanged = true
+})
+
 if (config.bridges) {
     for (const id in config.bridges) {
         var bridge = new bond.BondBridge(id, config.bridges[id].ip_address, config.bridges[id].local_token)
-        bridges[id] = bridge
         bridge.removeAllListeners().on('device', newDevice)
     }
 }
 
-if (mh.isTrue(config.auto_discover) !== false) {
-    bond.discover().on('bridge', function(bridge) {
-        console.log('discovered bridge: %s', bridge.bridge_id)
-        bridges[bridge.bridge_id] = bridge
-        bridge.removeAllListeners().on('device', newDevice)
-    })
-}
+if (mh.isTrue(config.auto_discover) !== false) bond.discover()
 
 if (config.no_repeat) {
     config.no_repeat.sort().forEach(function(cmd) {
@@ -501,8 +527,17 @@ if (config.no_repeat) {
 }
 
 setInterval(function() {
-    // if (configChanged) writeCache()
+    if (configChanged) writeCache()
     configChanged = false
 }, 5000)
+
+function exitNow() {
+    if (configChanged) writeCache()
+    configChanged = false
+    process.exit(0)
+}
+
+process.on('SIGTERM', exitNow)
+process.on('SIGINT', exitNow)
 
 mqttClient.publish(mqttConf.topic_prefix + '/' + 'system/state', 'start')
