@@ -433,9 +433,6 @@ function readCache() {
             console.log("bridges in cache - ", Object.keys(bridges).sort().join(' '))
             console.log("devices in cache - ", Object.keys(devices).sort().join(' '))
         }
-        for (const devSlug in devices) {
-            device_ids[devices[devSlug].device_id] = devSlug
-        }
     } catch {
         console.warn("Unable to parse cache file - ", config.config_cache)
     }
@@ -474,7 +471,18 @@ function writeCache() {
     }
 }
 
-// readCache()
+bond.events().on('bridge', function(bridge) {
+    var id = bridge.bridge_id
+    console.log('discovered bridge: %s', id)
+    if (!bridges[id]) bridges[id] = {}
+    bridges[id]._bridge = bridge
+    bridges[id].local_token = bridge.token
+    bridges[id].ip_address = bridge.ip_address
+    bridge.removeAllListeners().on('device', newDevice)
+    configChanged = true
+})
+
+readCache()
 
 if (config.devices) {
     for (const dev in config.devices) {
@@ -482,7 +490,7 @@ if (config.devices) {
 
         var devSlug = dev.toSlug()
         if (!devices[devSlug]) devices[devSlug] = {}
-        devices[devSlug]._config = dev
+        delete devices[devSlug].state_topic
 
         for (const name in config.devices[dev]) {
             devices[devSlug][name] = config.devices[dev][name]
@@ -499,22 +507,20 @@ if (config.devices) {
     }
 }
 
-bond.events().on('bridge', function(bridge) {
-    var id = bridge.bridge_id
-    console.log('discovered bridge: %s', id)
-    if (!bridges[id]) bridges[id] = {}
-    bridges[id]._bridge = bridge
-    bridges[id].token = bridge.token
-    bridges[id].ip_address = bridge.ip_address
-    bridge.removeAllListeners().on('device', newDevice)
-    configChanged = true
-})
-
 if (config.bridges) {
     for (const id in config.bridges) {
-        var bridge = new bond.BondBridge(id, config.bridges[id].ip_address, config.bridges[id].local_token)
-        bridge.removeAllListeners().on('device', newDevice)
+        var brtmp = config.bridges[id]
+        if (!bridges[id]) bridges[id] = {}
+        for (const attr in brtmp) {
+            bridges[id][attr] = brtmp[attr]
+        }
     }
+}
+
+for (const id in bridges) {
+    var brtmp = bridges[id]
+    var bridge = new bond.BondBridge(id, brtmp.ip_address, brtmp.local_token)
+    bridge.removeAllListeners().on('device', newDevice)
 }
 
 if (mh.isTrue(config.auto_discover) !== false) bond.discover()
