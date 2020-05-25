@@ -49,7 +49,6 @@ class BondHome {
             } else {
                 bridge = new bb.BondBridge(id, data.addresses[0])
             }
-	    emitter.emit('bridge',bridge)
         })
 	return emitter
     }
