@@ -440,30 +440,16 @@ function readCache() {
     return
 }
 
+function replacer(key,value) {
+     return (key.match(/^_/)) ? undefined : value
+}
+
 function writeCache() {
     if (config.config_cache) {
-        var bridge_tmp = {}
-        for (const id in bridges) {
-            bridge_tmp[id] = {}
-            for (const attr in bridges[id]) {
-                if (attr.match(/^_/)) continue
-                if (debug) console.log('saving bridge %s %s', id, attr)
-                bridge_tmp[id][attr] = bridges[id][attr]
-            }
-        }
-        var device_tmp = {}
-        for (const id in devices) {
-            device_tmp[id] = {}
-            for (const attr in devices[id]) {
-                if (attr.match(/^_/)) continue
-                if (debug) console.log('saving device %s %s', id, attr)
-                device_tmp[id][attr] = devices[id][attr]
-            }
-        }
         var jsondata = "{\n" +
             '"config": ' + JSON.stringify(config, null, 2) + ",\n" +
-            '"bridges": ' + JSON.stringify(bridge_tmp, null, 2) + ",\n" +
-            '"devices\": ' + JSON.stringify(device_tmp, null, 2) + "\n" +
+            '"bridges": ' + JSON.stringify(bridges, replacer, 2) + ",\n" +
+            '"devices\": ' + JSON.stringify(devices, replacer, 2) + "\n" +
             "}\n"
         fs.writeFile(config.config_cache, jsondata, (err) => {
             if (err) throw err
