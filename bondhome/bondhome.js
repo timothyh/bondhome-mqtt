@@ -26,7 +26,7 @@ class BondHome {
         return BondHome._slugSeparator ?  value.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, BondHome._slugSeparator) : value.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
     }
 
-    static discover() {
+    static discover(timeout = 10000) {
         const mdns = require('mdns-js')
 	var emitter = new EventEmitter()
 
@@ -50,6 +50,12 @@ class BondHome {
                 bridge = new bb.BondBridge(id, data.addresses[0])
             }
         })
+
+	    //stop after timeout
+	setTimeout(function() {
+	  mdns_browser.stop()
+	}, timeout)
+
 	return emitter
     }
 
