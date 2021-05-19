@@ -3,6 +3,7 @@ cache/
 *.crt
 TODO
 BAK/
+package-lock.json
 # ###############################
 #
 # Logs
