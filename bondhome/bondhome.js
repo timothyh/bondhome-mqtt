@@ -106,6 +106,8 @@ class BondHome {
 		return
 	    }
 
+	    bridge.bpup_activity = Date.now()
+
             var dev_id = resp.t.replace(/devices\/(\w\w*)\/state/, '$1')
             var device = bridge.devices[dev_id]
             if (!device) {

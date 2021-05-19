@@ -85,13 +85,16 @@ class BondDevice {
     _processDevice(args, data) {
         if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
+	if ( ! data.name ) return
+
         this.name = data.name
         this.location = data.location
         this.type = data.type
         this.template = data.template
 
         this.checksum = data._
-        this.actions = data.actions.sort()
+        if ( data.actions ) { this.actions = data.actions.sort() }
+	else { console.warn("%s: no actions found", data.name) }
 
         if (this.type === 'CF') {
             if (this.actions.includes('TurnOn')) this.setCommand('Fan On', 'TurnOn', null)

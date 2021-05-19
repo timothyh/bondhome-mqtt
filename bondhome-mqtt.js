@@ -25,6 +25,7 @@ var actions = {
     light: [
         "DecreaseBrightness",
         "IncreaseBrightness",
+        "SetBrightness",
         "ToggleLight",
         "TurnLightOff",
         "TurnLightOn"
@@ -54,6 +55,7 @@ var configChanged = false
 
 bond.BondHome.bpupListenPort = (config.bpup_port !== undefined) ? config.bpup_port : 30008
 
+// Legacy
 var keepaliveInterval = config.keepalive_interval ? config.keepalive_interval * 1000 : 60000
 var inactivityTimeout = config.inactivity_timeout ? config.inactivity_timeout * 1000 : 90000
 
@@ -101,6 +103,10 @@ if (!mqttConf.protocol) mqttConf.protocol = 'mqtt'
 
 if (mqttConf.cafile) mqttConf.cacertificate = [fs.readFileSync(mqttConf.cafile)]
 
+// Transition inactivity parameters to MQTT attributes
+if (mqttConf.keepalive_interval) keepaliveInterval = mqttConf.keepalive_interval * 1000
+if (mqttConf.inactivity_timeout) inactivityTimeout = mqttConf.inactivity_timeout * 1000
+
 var mqttClient = mqtt.connect({
     ca: mqttConf.cacertificate,
     host: mqttConf.host,
@@ -130,6 +136,8 @@ mqttClient.on('message', function(topic, message) {
     if (topic === mqttConf.ping_topic) return
 
     message = message.toString()
+
+    if (verbose) console.log("topic: %s message: %s", topic, message)
 
     if (topic === hassStatusTopic) {
         if (message === config.homeassistant.startup_payload) setTimeout(hassPublishAll, 30000)
@@ -211,12 +219,14 @@ mqttClient.on('message', function(topic, message) {
                 sendCommand(devSlug, message)
                 break
             case 'light':
+                message = mh.isTrue(message) ? 'On' : 'Off'
                 if (verbose) console.log('device: %s command: Light %s', devSlug, message)
-                sendCommand(devSlug, 'Light ' + (mh.isTrue(message) ? 'On' : 'Off'))
+                sendCommand(devSlug, 'Light ' + message)
                 break
             case 'fan':
+                message = mh.isTrue(message) ? 'On' : 'Off'
                 if (verbose) console.log('device: %s command: Fan %s', devSlug, message)
-                sendCommand(devSlug, 'Fan ' + (mh.isTrue(message) ? 'On' : 'Off'))
+                sendCommand(devSlug, 'Fan ' + message)
                 break
             case 'speed':
                 if (devices[devSlug].max_speed >= 1) {

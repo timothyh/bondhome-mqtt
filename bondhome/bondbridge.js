@@ -25,6 +25,9 @@ class BondBridge extends EventEmitter {
         this.token = token
         this._queue = []
         this.devices = {}
+	this.bpup_activity = Date.now()
+	this._rejectUnauthorized = false
+	this.protocol = 'http'
 
         if (ip) {
             this.ip_address = ip
@@ -159,7 +162,8 @@ class BondBridge extends EventEmitter {
         var http_args = {
             headers: {
                 "Content-Type": "application/json"
-            }
+            },
+	    rejectUnauthorized: this._rejectUnauthorized
         }
 
         if (this.token) http_args.headers['BOND-Token'] = this.token
@@ -174,7 +178,7 @@ class BondBridge extends EventEmitter {
                 setImmediate(args.callback, args)
                 break
             case 'GET':
-                req = client.get('http://' + this.ip_address + args.path, http_args, function(data, response) {
+                req = client.get(this.protocol + '://' + this.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
                     self.activity = Date.now()
                     self._queueTimer = setTimeout(self._sendNext.bind(self), 50)
@@ -183,7 +187,7 @@ class BondBridge extends EventEmitter {
                 break
             case 'PATCH':
                 if (args.data) http_args.data = args.data
-                req = client.patch('http://' + this.ip_address + args.path, http_args, function(data, response) {
+                req = client.patch(this.protocol + '://' + this.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
                     self.activity = Date.now()
                     self._queueTimer = setTimeout(self._sendNext.bind(self), 50)
@@ -192,7 +196,7 @@ class BondBridge extends EventEmitter {
                 break
             case 'PUT':
                 if (args.data) http_args.data = args.data
-                req = client.put('http://' + self.ip_address + args.path, http_args, function(data, response) {
+                req = client.put(this.protocol + '://' + self.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
                     self.activity = Date.now()
                     self._queueTimer = setTimeout(self._sendNext.bind(self), 200)
