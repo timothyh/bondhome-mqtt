@@ -37,12 +37,8 @@ module.exports.hassConfig = function(devSlug, prefix, config) {
         'unique_id': id + '-fan'
     }
     if (device.max_speed >= 1) {
-        attr.payload_low_speed = config._lowSpeed
-        attr.payload_medium_speed = config._mediumSpeed
-        attr.payload_high_speed = config._highSpeed
-        attr.speeds = ['off', 'low', 'medium', 'high']
-        attr.speed_command_topic = prefix + '/' + devSlug + '/set/speed'
-        attr.speed_state_topic = prefix + '/' + devSlug + '/speed'
+        attr.percentage_command_topic = prefix + '/' + devSlug + '/set/percentage'
+        attr.percentage_state_topic = prefix + '/' + devSlug + '/percentage'
     }
     res["fan/" + devSlug] = attr
     if (config.has_light) {

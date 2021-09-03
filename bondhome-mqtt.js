@@ -259,6 +259,23 @@ mqttClient.on('message', function(topic, message) {
                     }
                 }
                 break
+            case 'percentage':
+                if (devices[devSlug].max_speed >= 1) {
+                    var max_speed = devices[devSlug].max_speed
+                    var speed = -1
+                    try {
+                        speed = parseInt(message)
+                        speed = Math.floor(0.5 + (max_speed * (speed / 100.0)))
+                    } catch {}
+                    if (speed == 0) {
+                        sendCommand(devSlug, 'Fan Off')
+                    } else if (speed > 0 && speed <= max_speed) {
+                        sendCommand(devSlug, 'Speed ' + speed)
+                    } else {
+                        console.warn('device: %s command: Speed %s - invalid speed', devSlug, message)
+                    }
+                }
+                break
             case 'action':
                 var action = topic.replace(/^.*\//, '')
                 if (device.actions.includes(action)) {
@@ -296,19 +313,21 @@ bond.events().on('event', function(device, state) {
 
         devices[devSlug].state[name] = newState[name]
         changed = true
-    }
+        configChanged = true
 
-    if (changed) {
         if (publishState) {
-            for (const name in newState) {
-                if (newState[name] === undefined || newState[name] === null) continue
-                var msg = newState[name].toString()
-                mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
+            if (newState[name] === undefined || newState[name] === null) continue
+
+            var msg = newState[name].toString()
+            mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
+            if (name === 'speed') {
+                msg = Math.floor(0.5 + (newState.speed * 100.0 / devices[devSlug].max_speed)).toString()
+                mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/percentage', msg)
             }
         }
-        if (publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
-        configChanged = true
     }
+
+    if (changed && publishJson) mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/event', JSON.stringify(devices[devSlug].state))
 })
 
 bond.events().on('warn', function(device, msg) {
@@ -374,8 +393,6 @@ function newDevice(device) {
 
     if (!devices[devSlug].state) devices[devSlug].state = {}
 
-    if (verbose) console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
-
     var max_speed
     if (device.max_speed >= 1) {
         max_speed = Math.floor(devices[devSlug].max_speed)
@@ -386,14 +403,20 @@ function newDevice(device) {
         devices[devSlug].max_speed = max_speed
     }
 
-    if (hassEnabled) hassPublish(devSlug)
-
-    if (verbose) console.log("device: %s max_speed: %s commands: %s", devSlug, max_speed, Object.keys(device.commands).sort().join(' '))
+    setTimeout(function() {
+        if (verbose) {
+            console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
+            console.log("device: %s max_speed: %s commands: %s", devSlug, max_speed, Object.keys(device.commands).sort().join(' '))
+        }
+        hassPublish(devSlug)
+    }, 5000)
 
     configChanged = true
 }
 
 function hassPublishAll() {
+    if (!hassEnabled) return
+
     console.log("Publishing homeassistant configuration")
     for (const devSlug in devices) {
         hassPublish(devSlug)
@@ -401,6 +424,8 @@ function hassPublishAll() {
 }
 
 function hassPublish(devSlug) {
+    if (!hassEnabled) return
+
     var device = devices[devSlug]._device
     var hc
     var mods = []
@@ -427,6 +452,18 @@ function hassPublish(devSlug) {
         for (const topic in res) {
             mqttClient.publish(config.homeassistant.topic_prefix + '/' + topic + '/config', JSON.stringify(res[topic]), hassMqttOptions)
         }
+
+        var state = devices[devSlug].state
+        if (state) {
+            for (const name in state) {
+                var msg = state[name].toString()
+                mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/' + name, msg)
+                if (name === 'speed') {
+                    msg = Math.floor(0.5 + (state.speed * 100.0 / devices[devSlug].max_speed)).toString()
+                    mqttClient.publish(mqttConf.topic_prefix + '/' + devSlug + '/percentage', msg)
+                }
+            }
+        }
     }
 }
 
@@ -450,8 +487,8 @@ function readCache() {
     return
 }
 
-function replacer(key,value) {
-     return (key.match(/^_/)) ? undefined : value
+function replacer(key, value) {
+    return (key.match(/^_/)) ? undefined : value
 }
 
 function writeCache() {
