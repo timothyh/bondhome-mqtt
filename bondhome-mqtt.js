@@ -511,6 +511,7 @@ bond.events().on('bridge', function(bridge) {
     bridges[id]._bridge = bridge
     bridges[id].local_token = bridge.token
     bridges[id].ip_address = bridge.ip_address
+    bridges[id].debug = mh.isTrue(bridge.debug)
     bridge.removeAllListeners().on('device', newDevice)
     configChanged = true
 })
@@ -552,7 +553,7 @@ if (config.bridges) {
 
 for (const id in bridges) {
     var brtmp = bridges[id]
-    var bridge = new bond.BondBridge(id, brtmp.ip_address, brtmp.local_token)
+    var bridge = new bond.BondBridge(id, brtmp.ip_address, brtmp.local_token, brtmp.debug)
     bridge.removeAllListeners().on('device', newDevice)
 }
 

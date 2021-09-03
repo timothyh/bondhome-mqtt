@@ -2,7 +2,9 @@
 
 const util = require('util')
 
-const { EventEmitter } = require('events')
+const {
+    EventEmitter
+} = require('events')
 
 const bb = require('./bondbridge')
 
@@ -18,17 +20,17 @@ class BondHome {
     static _events = new EventEmitter()
 
     static setSeparator(sep) {
-	    BondHome._slugSeparator = sep
+        BondHome._slugSeparator = sep
     }
 
     static toSlug(value) {
-            // Ignore any string between ()
-        return BondHome._slugSeparator ?  value.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, BondHome._slugSeparator) : value.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
+        // Ignore any string between ()
+        return BondHome._slugSeparator ? value.toLowerCase().replace(/\([^)]+\)/g, ' ').replace(/[^\w\d]+/g, ' ').trim().replace(/ /g, BondHome._slugSeparator) : value.toLowerCase().replace(/[\/ ]+/g, ' ').trim()
     }
 
     static discover(timeout = 10000) {
         const mdns = require('mdns-js')
-	var emitter = new EventEmitter()
+        var emitter = new EventEmitter()
 
         mdns.excludeInterface('0.0.0.0')
 
@@ -40,29 +42,34 @@ class BondHome {
 
         mdns_browser.on('update', function(data) {
             var id = data.host.replace('.local', '').toUpperCase()
-            if (BondHome.debug) console.log('discovered bridge: %s (%s)', id, data.addresses[0])
 
             var bridge = BondHome._bridges[id]
             if (bridge) {
-                bridge.ip_address = data.addresses[0]
-                bridge.refresh()
+                if (bridge.ip_address) {
+                    if (BondHome.verbose && bridge.ip_address !== data.addresses[0]) console.log('Duplicate IP for bridge: %s (%s)', id, data.addresses[0])
+                } else {
+                    if (BondHome.verbose) console.log('discovered known bridge: %s (%s)', id, data.addresses[0])
+                    bridge.ip_address = data.addresses[0]
+                    bridge.refresh()
+                }
             } else {
+                if (BondHome.verbose) console.log('discovered new bridge: %s (%s)', id, data.addresses[0])
                 bridge = new bb.BondBridge(id, data.addresses[0])
             }
         })
 
-	    //stop after timeout
-	setTimeout(function() {
-	  mdns_browser.stop()
-	}, timeout)
+        //stop after timeout
+        setTimeout(function() {
+            mdns_browser.stop()
+        }, timeout)
 
-	return emitter
+        return emitter
     }
 
     static events() {
-	    // if (!BondHome._events) BondHome._events = new EventEmitter()
+        // if (!BondHome._events) BondHome._events = new EventEmitter()
 
-	    return BondHome._events
+        return BondHome._events
     }
 
     static bpupListen() {
@@ -78,11 +85,11 @@ class BondHome {
         })
 
         listener.on('message', (msg, rinfo) => {
-	    
-	    if (rinfo.port != BondHome.bpupBridgePort) {
-                console.warn("packet from unexpected port: %s:%s", rinfo.address,rinfo.port)
-		return
-	    }
+
+            if (rinfo.port != BondHome.bpupBridgePort) {
+                console.warn("packet from unexpected port: %s:%s", rinfo.address, rinfo.port)
+                return
+            }
             var resp
             try {
                 resp = JSON.parse(msg)
@@ -101,12 +108,12 @@ class BondHome {
                 return
             }
 
-	    if (rinfo.address !== bridge.ip_address) {
+            if (rinfo.address !== bridge.ip_address) {
                 console.warn("packet from unexpected source: %s", rinfo.address, rinfo.port)
-		return
-	    }
+                return
+            }
 
-	    bridge.bpup_activity = Date.now()
+            bridge.bpup_activity = Date.now()
 
             var dev_id = resp.t.replace(/devices\/(\w\w*)\/state/, '$1')
             var device = bridge.devices[dev_id]

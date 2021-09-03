@@ -12,8 +12,9 @@ const bh = require('./bondhome')
 const bd = require('./bonddevice')
 
 class BondBridge extends EventEmitter {
-    constructor(id, ip = undefined, token = undefined) {
+    constructor(id, ip = undefined, token = undefined, debug = false) {
         super()
+        if (bh.BondHome.debug || debug) console.log("Bridge %s: ip: %s debug: %s", id, ip, debug)
         this.bridge_id = id.toUpperCase()
         if (bh._bridges[this.bridge_id]) {
             throw new Error('bridge: ' + id + ' already instantiated - Destroy old instance')
@@ -22,12 +23,13 @@ class BondBridge extends EventEmitter {
 
         if (!bh.BondHome._bpupListener) bh.BondHome.bpupListen()
 
+        this.debug = debug
         this.token = token
         this._queue = []
         this.devices = {}
-	this.bpup_activity = Date.now()
-	this._rejectUnauthorized = false
-	this.protocol = 'http'
+        this.bpup_activity = Date.now()
+        this._rejectUnauthorized = false
+        this.protocol = 'http'
 
         if (ip) {
             this.ip_address = ip
@@ -35,7 +37,7 @@ class BondBridge extends EventEmitter {
         }
         var self = this
         this._bpupTimer = setInterval(function() {
-            bh.enableBpup(self.ip_address)
+            if (self.ip_address) bh.enableBpup(self.ip_address)
         }, 60000)
         this._keepAliveTimer = setInterval(function() {
             if (!self._queueTimer && self._queue) self._sendNext()
@@ -70,7 +72,7 @@ class BondBridge extends EventEmitter {
     }
 
     _processToken(args, data) {
-        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug || this.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
         if (data.locked) {
             if (bh.BondHome.verbose) console.log("bridge: %s - locked - no token retrieved", this.bridge_id)
@@ -100,7 +102,7 @@ class BondBridge extends EventEmitter {
     }
 
     _processBridge(args, data) {
-        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug || this.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
 
         this.name = data.name
         this.location = data.location
@@ -129,7 +131,7 @@ class BondBridge extends EventEmitter {
     }
 
     _processDeviceList(args, data) {
-        if (bh.BondHome.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
+        if (bh.BondHome.debug || this.debug) console.log("this=%s\nargs=%s\ndata=%s\n", this, args, data)
         for (const dev_id in this.devices) {
             this.devices[dev_id].destroy()
             delete this.devices[dev_id]
@@ -163,7 +165,7 @@ class BondBridge extends EventEmitter {
             headers: {
                 "Content-Type": "application/json"
             },
-	    rejectUnauthorized: this._rejectUnauthorized
+            rejectUnauthorized: this._rejectUnauthorized
         }
 
         if (this.token) http_args.headers['BOND-Token'] = this.token
@@ -178,7 +180,7 @@ class BondBridge extends EventEmitter {
                 setImmediate(args.callback, args)
                 break
             case 'GET':
-                req = client.get(this.protocol + '://' + this.ip_address + args.path, http_args, function(data, response) {
+                req = client.get(this.protocol + '://' + self.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
                     self.activity = Date.now()
                     self._queueTimer = setTimeout(self._sendNext.bind(self), 50)
@@ -187,7 +189,7 @@ class BondBridge extends EventEmitter {
                 break
             case 'PATCH':
                 if (args.data) http_args.data = args.data
-                req = client.patch(this.protocol + '://' + this.ip_address + args.path, http_args, function(data, response) {
+                req = client.patch(this.protocol + '://' + self.ip_address + args.path, http_args, function(data, response) {
                     self.alive = true
                     self.activity = Date.now()
                     self._queueTimer = setTimeout(self._sendNext.bind(self), 50)
@@ -214,7 +216,8 @@ class BondBridge extends EventEmitter {
         }
 
         req.on('error', function(err) {
-            console.warn('bridge: %s path: %s error: %s', this.bridge_id, args.path, err.message)
+            console.warn('bridge: %s path: %s error: %s', self.bridge_id, args.path, err.message)
+            if (bh.BondHome.debug || self.debug) console.log("bridge: %s full error: %s", self.bridge_id, err)
         })
     }
 }
