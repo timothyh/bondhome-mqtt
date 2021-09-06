@@ -406,7 +406,8 @@ function newDevice(device) {
     setTimeout(function() {
         if (verbose) {
             console.log("device: %s actions: %s", devSlug, device.actions.sort().join(' '))
-            console.log("device: %s max_speed: %s commands: %s", devSlug, max_speed, Object.keys(device.commands).sort().join(' '))
+            console.log("device: %s commands: %s", devSlug, Object.keys(device.commands).sort().join(' '))
+	    if (device.max_speed >= 1) console.log("device: %s max_speed: %s", devSlug, max_speed)
         }
         hassPublish(devSlug)
     }, 5000)

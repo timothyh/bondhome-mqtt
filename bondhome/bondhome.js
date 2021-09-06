@@ -1,6 +1,9 @@
 'use strict'
 
 const util = require('util')
+var Client = require('node-rest-client').Client;
+
+var client = new Client();
 
 const {
     EventEmitter
@@ -40,22 +43,32 @@ class BondHome {
             mdns_browser.discover()
         })
 
-        mdns_browser.on('update', function(data) {
-            var id = data.host.replace('.local', '').toUpperCase()
+        mdns_browser.on('update', function(mdnsData) {
+            var ip = mdnsData.addresses[0]
+	    // Retrieve some basic data to verify IP is really a Bond bridge
+            client.get("http://" + ip + "/v2/sys/version", function(data, response) {
+                if (BondHome.debug) console.log(data);
 
-            var bridge = BondHome._bridges[id]
-            if (bridge) {
-                if (bridge.ip_address) {
-                    if (BondHome.verbose && bridge.ip_address !== data.addresses[0]) console.log('Duplicate IP for bridge: %s (%s)', id, data.addresses[0])
-                } else {
-                    if (BondHome.verbose) console.log('discovered known bridge: %s (%s)', id, data.addresses[0])
-                    bridge.ip_address = data.addresses[0]
-                    bridge.refresh()
+                var id = data.bondid
+                if (!id) {
+                    console.warn("%s: not a bridge", ip)
+                    return
                 }
-            } else {
-                if (BondHome.verbose) console.log('discovered new bridge: %s (%s)', id, data.addresses[0])
-                bridge = new bb.BondBridge(id, data.addresses[0])
-            }
+                id = id.toUpperCase()
+
+                var bridge = BondHome._bridges[id]
+                if (bridge) {
+                    if (BondHome.verbose) {
+                        if (bridge.ip_address && bridge.ip_address !== ip) console.log('%s: duplicate IP for bridge: %s', id, ip)
+                    }
+                    if (BondHome.verbose) console.log('discovered known bridge: %s (%s)', id, ip)
+                    bridge.ip_address = ip
+                    bridge.refresh()
+                } else {
+                    if (BondHome.verbose) console.log('discovered new bridge: %s (%s)', id, ip)
+                    bridge = new bb.BondBridge(id, ip)
+                }
+            });
         })
 
         //stop after timeout
